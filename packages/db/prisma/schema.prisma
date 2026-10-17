@@ -325,6 +325,8 @@ model UserVoiceCredential {
   userId      String
   user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider    String
+  // OpenAI-compatible API base URL override. Null keeps the provider default.
+  baseUrl     String?
   secretId    String
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt

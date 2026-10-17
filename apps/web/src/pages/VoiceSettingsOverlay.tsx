@@ -31,6 +31,7 @@ export function VoiceSettingsOverlay({
   const apiKeyId = useId();
   const voiceSelectId = useId();
   const speechModelId = useId();
+  const baseUrlId = useId();
   const [catalog, setCatalog] = useState<VoiceCatalogEntry[]>([]);
   const [credentials, setCredentials] = useState<VoiceCredential[]>([]);
   const [status, setStatus] = useState<VoiceStatus | null>(null);
@@ -39,6 +40,7 @@ export function VoiceSettingsOverlay({
   const [apiKey, setApiKey] = useState("");
   const [voiceId, setVoiceId] = useState("");
   const [speechModel, setSpeechModel] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
   const speechModelSave = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<"connect" | "disconnect" | "voice" | "test" | null>(null);
@@ -71,6 +73,7 @@ export function VoiceSettingsOverlay({
     const activeVoice = cred?.voiceId ?? "";
     setVoiceId(activeVoice);
     setSpeechModel(cred?.speechModel ?? "");
+    setBaseUrl(cred?.baseUrl ?? "");
     if (cred) {
       const listed = await rpc.voice.voices({ provider: selected });
       setVoices(listed);
@@ -89,7 +92,10 @@ export function VoiceSettingsOverlay({
   const selected = catalog.find((entry) => entry.id === provider) ?? catalog[0];
   const credential = credentials.find((entry) => entry.provider === provider);
   const voiceOptions = useMemo(
-    () => (voices.length ? voices : voiceId ? [{ id: voiceId, label: voiceId }] : []),
+    () =>
+      voiceId && !voices.some((voice) => voice.id === voiceId)
+        ? [{ id: voiceId, label: voiceId }, ...voices]
+        : voices,
     [voices, voiceId],
   );
 
@@ -103,7 +109,10 @@ export function VoiceSettingsOverlay({
         provider: selected.id,
         apiKey: apiKey.trim(),
         voiceId: voiceId || undefined,
-        ...(selected.id === "fish-audio" ? { speechModel: speechModel.trim() } : {}),
+        ...(selected.id === "fish-audio" || selected.id === "openai"
+          ? { speechModel: speechModel.trim() }
+          : {}),
+        ...(selected.id === "openai" ? { baseUrl: baseUrl.trim() } : {}),
       });
       setApiKey("");
       await refresh(selected.id);
@@ -147,7 +156,7 @@ export function VoiceSettingsOverlay({
   }
 
   async function saveSpeechModel() {
-    if (!credential || selected?.id !== "fish-audio") return;
+    if (!credential || (selected?.id !== "fish-audio" && selected?.id !== "openai")) return;
     const next = speechModel.trim();
     if (next === credential.speechModel) return;
     if (speechModelSave.current === next) return;
@@ -277,6 +286,23 @@ export function VoiceSettingsOverlay({
                   placeholder={credential ? t`Paste a replacement key` : t`Paste your API key`}
                 />
               </Field>
+              {selected.id === "openai" ? (
+                <Field className="mt-5">
+                  <FieldLabel htmlFor={baseUrlId}>
+                    <Trans>Base URL</Trans>
+                  </FieldLabel>
+                  <Input
+                    id={baseUrlId}
+                    value={baseUrl}
+                    maxLength={512}
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={busy}
+                    placeholder={t`Optional`}
+                    onChange={(event) => setBaseUrl(event.target.value)}
+                  />
+                </Field>
+              ) : null}
               <Button
                 type="button"
                 className="mt-3"
@@ -329,7 +355,7 @@ export function VoiceSettingsOverlay({
                       ))}
                     </NativeSelect>
                   </Field>
-                  {selected.id === "fish-audio" ? (
+                  {selected.id === "fish-audio" || selected.id === "openai" ? (
                     <Field className="mt-6">
                       <FieldLabel htmlFor={speechModelId}>
                         <Trans>Speech model</Trans>
