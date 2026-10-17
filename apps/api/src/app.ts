@@ -576,6 +576,7 @@ export async function createApp(
       imageTag: env.imageTag,
       integrationsCatalogUrl: env.integrationsCatalogUrl,
       mcpAllowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
+      xkiroApiKey: env.xkiroApiKey,
     },
   });
   const rpc = new RPCHandler(router, {
