@@ -10,12 +10,21 @@ export function parseScreenLeaseId(leaseId: string): { ownerId: string; fence: n
   return { ownerId: leaseId.slice(0, separator), fence };
 }
 
+/** A bare id (no `owner:fence` suffix) is the human's control lease, never an execution. */
+export function isUserScreenLease(leaseId: string): boolean {
+  return !leaseId.includes(":");
+}
+
 export function canTakeScreenLease(
   existing: string | undefined,
   incoming: string | undefined,
 ): boolean {
   if (!incoming) return false;
   if (!existing || existing === incoming) return true;
+  // The human at the screen is never stale: user screen input must not be
+  // fence-rejected just because a run renewed its lease. Fenced executions
+  // keep ordering among themselves by fence (and still reclaim from a user).
+  if (isUserScreenLease(incoming)) return true;
   return parseScreenLeaseId(incoming).fence > parseScreenLeaseId(existing).fence;
 }
 

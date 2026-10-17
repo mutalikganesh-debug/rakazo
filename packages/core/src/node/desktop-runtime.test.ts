@@ -195,6 +195,21 @@ describe("shared Linux desktop lifecycle", () => {
     expect(f.ensure("d").stdout).toContain("RAKAZO_DESKTOP=0:view-d");
   });
 
+  it("never rejects the human's control lease at the screen fence", () => {
+    const f = fixture();
+    expect(f.ensure("a", "run:5").status).toBe(0);
+    // The user takes the screen during an active run...
+    expect(f.ensure("a", "user-takeover").status).toBe(0);
+    // ...the run renews its lease and reclaims it...
+    expect(f.ensure("a", "run:6").status).toBe(0);
+    // ...and the human's input is never stale-rejected by the newer run fence.
+    expect(f.ensure("a", "user-takeover").status).toBe(0);
+    expect(f.run(desktopControlCommand("a", "user-takeover", env, true, "token")).status).toBe(0);
+    // A stale run is still fenced out.
+    expect(f.ensure("a", "run:6").status).toBe(0);
+    expect(f.ensure("a", "run:5").status).toBe(75);
+  });
+
   it("does not create a screen on control release and keeps newer fences", () => {
     const f = fixture();
     expect(f.run(desktopControlCommand("missing", "run:1", env, false, "token")).status).toBe(0);

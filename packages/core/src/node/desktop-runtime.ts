@@ -700,11 +700,18 @@ function acceptLeaseCommand(leaseId?: string, release = false) {
     'if [ -n "$incoming" ] && [ -n "$current" ] && [ "$incoming" != "$current" ]; then',
     // biome-ignore lint/suspicious/noTemplateCurlyInString: shell parameter expansion
     "  incoming_fence=${incoming##*:}; current_fence=${current##*:}",
-    '  case "$incoming_fence:$current_fence" in *[!0-9:]*|:*|*:) exit 75 ;; esac',
+    '  case "$incoming_fence:$current_fence" in *:|*:) exit 75 ;; esac',
     release
       ? // biome-ignore lint/suspicious/noTemplateCurlyInString: shell parameter expansion
         '  [ "${incoming%:*}" = "${current%:*}" ] && [ "$incoming_fence" -ge "$current_fence" ] || exit 75'
-      : '  [ "$incoming_fence" -gt "$current_fence" ] || exit 75',
+      : [
+          // A bare lease is the human at the screen (their control lease): never
+          // stale, and any fenced execution reclaims from one. Fenced executions
+          // keep ordering among themselves by fence.
+          '  case "$incoming" in *:*) take_in=$incoming_fence ;; *) take_in=999999999 ;; esac',
+          '  case "$current" in *:*) take_cur=$current_fence ;; *) take_cur=0 ;; esac',
+          '  [ "$take_in" -gt "$take_cur" ] || exit 75',
+        ].join("\n"),
     "fi",
   ];
 }

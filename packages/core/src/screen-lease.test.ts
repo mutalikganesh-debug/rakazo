@@ -26,6 +26,16 @@ describe("canTakeScreenLease", () => {
     expect(canTakeScreenLease("run-1:8", "run-1:1")).toBe(false);
     expect(canTakeScreenLease("run-2:2", undefined)).toBe(false);
   });
+
+  it("never stale-rejects the human's control lease", () => {
+    expect(canTakeScreenLease("run-2:2", "user-control")).toBe(true);
+    expect(canTakeScreenLease("run-1:8", "user-control")).toBe(true);
+  });
+
+  it("lets a run reclaim the screen from a user control lease", () => {
+    expect(canTakeScreenLease("user-control", "run-1:1")).toBe(true);
+    expect(canTakeScreenLease("user-control", "run-1:0")).toBe(false);
+  });
 });
 
 describe("canReleaseScreenLease", () => {
