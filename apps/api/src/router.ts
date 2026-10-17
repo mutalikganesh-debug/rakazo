@@ -215,7 +215,12 @@ import {
   touchGroupUpdatedAt,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
+import {
+  deleteAgentSecret,
+  listAgentSecrets,
+  putAgentSecret,
+  revealAgentSecret,
+} from "./agent-secrets.js";
 import { createAgentSkillsService } from "./agent-skills.js";
 import { aiConsentStatus, allowAiConsent } from "./ai-consent.js";
 import {
@@ -5697,6 +5702,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       remove: authed.agentSecrets.remove.handler(async ({ context, input }) =>
         deleteAgentSecret({ prisma: deps.prisma, secrets: deps.secrets }, context.actor, input.id),
+      ),
+      reveal: authed.agentSecrets.reveal.handler(async ({ context, input }) =>
+        revealAgentSecret({ prisma: deps.prisma, secrets: deps.secrets }, context.actor, input.id),
       ),
     },
     botSecrets: {

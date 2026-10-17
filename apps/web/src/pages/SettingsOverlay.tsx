@@ -7,6 +7,7 @@ import {
   Cpu,
   CreditCard,
   Gauge,
+  KeyRound,
   Monitor,
   Settings,
   Volume2,
@@ -24,6 +25,7 @@ import {
 import { BillingSettingsPanel } from "./BillingSettingsPanel";
 import { MemorySettingsOverlay } from "./MemorySettingsOverlay";
 import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
+import { SecretsSettingsPanel } from "./SecretsSettingsPanel";
 import { VoiceSettingsOverlay } from "./VoiceSettingsOverlay";
 
 export type SettingsSection =
@@ -34,7 +36,8 @@ export type SettingsSection =
   | "usage"
   | "computer"
   | "billing"
-  | "updates";
+  | "updates"
+  | "secrets";
 
 type NavItem = {
   id: SettingsSection;
@@ -142,6 +145,7 @@ export function SettingsOverlay({
     ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
     ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
     { id: "updates", label: t`Updates`, icon: CloudDownload },
+    { id: "secrets", label: t`Secrets`, icon: KeyRound },
   ];
 
   const sectionTitle =
@@ -279,6 +283,7 @@ export function SettingsOverlay({
               {section === "updates" ? (
                 <UpdatesSettingsPanel isDeploymentOwner={isDeploymentOwner} />
               ) : null}
+              {section === "secrets" ? <SecretsSettingsPanel /> : null}
               {section === "models" ? (
                 <ModelSettingsOverlay embedded onClose={requestClose} />
               ) : null}

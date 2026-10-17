@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactBindings, redactSensitiveText } from "./redaction.js";
+import { redactBindings, redactLeaks, redactSensitiveText } from "./redaction.js";
 
 describe("redaction", () => {
   it("redacts secrets, credentials, and message bodies", () => {
@@ -104,5 +104,27 @@ describe("redaction", () => {
     expect(redacted).toContain('"password":"[Redacted]"');
     expect(redacted).toContain('"token":"[Redacted]"');
     expect(redacted).toContain('"authorization":"[Redacted]"');
+  });
+});
+
+describe("leak-guard redactLeaks", () => {
+  it("masks named vault values with stable names and scrubs key patterns", () => {
+    const text = [
+      "vault value zz-top-secret-value here",
+      "sk-abc123def456",
+      "Authorization: Bearer ghs_abc123",
+      'payload {"token":"sk-test1234567890"} done',
+      "OPENAI_API_KEY=sk-test1234567890",
+    ].join("\n");
+    const out = redactLeaks(text, [{ name: "SUPER_KEY", value: "zz-top-secret-value" }]);
+    expect(out).toContain("vault value [REDACTED:SUPER_KEY] here");
+    expect(out).toContain("[REDACTED:api-key]");
+    expect(out).toContain("[REDACTED:bearer]");
+    expect(out).toContain('"token":"[REDACTED:token]"');
+    expect(out).toContain("OPENAI_API_KEY=[REDACTED:openai_api_key]");
+    expect(out).not.toContain("zz-top-secret-value");
+    expect(out).not.toContain("sk-abc123def456");
+    expect(out).not.toContain("ghs_abc123");
+    expect(out).not.toContain("sk-test1234567890");
   });
 });

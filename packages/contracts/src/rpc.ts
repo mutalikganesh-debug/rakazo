@@ -947,6 +947,9 @@ export const appContract = {
     list: oc.output(z.array(AgentSecretSchema)),
     put: oc.input(AgentSecretInputSchema).output(AgentSecretSchema),
     remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    reveal: oc
+      .input(z.object({ id: Id }))
+      .output(z.object({ name: z.string(), value: z.string() })),
   },
   botSecrets: {
     list: oc.input(z.object({ botId: Id })).output(z.array(BotSecretMetadata)),

@@ -31,7 +31,7 @@ import type {
 import { DEFAULT_CONTEXT_STRATEGY } from "@rakazo/adapter-kit";
 import { usableModelId } from "@rakazo/contracts";
 import { abortableDelay } from "@rakazo/core";
-import { getLogger } from "@rakazo/logging";
+import { getLogger, type NamedSecret, redactLeaks } from "@rakazo/logging";
 import { isToolPauseResult } from "./approval-effect.js";
 import { connectionIdArgument, credentialArgument } from "./bot-secrets.js";
 import { DELEGATION_TOOL_NAMES } from "./builtin-tools.js";
@@ -2449,11 +2449,60 @@ function fallbackSupportsContext(
   return !requiresReasoning || candidate.model.reasoning;
 }
 
+type RedactableBlock = { type: string; text?: string; arguments?: unknown };
+
+function redactLeakJsonValue(value: unknown, named: readonly NamedSecret[]): unknown {
+  if (typeof value === "string") return redactLeaks(value, named);
+  if (Array.isArray(value)) return value.map((item) => redactLeakJsonValue(item, named));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, redactLeakJsonValue(nested, named)]),
+    );
+  }
+  return value;
+}
+
+function redactLeakBlock(block: RedactableBlock, named: readonly NamedSecret[]): RedactableBlock {
+  if (block.type === "image") return block; // binary payload, never text-scrubbed
+  if (block.type === "toolCall") {
+    return { ...block, arguments: redactLeakJsonValue(block.arguments, named) };
+  }
+  return redactLeakJsonValue(block, named) as RedactableBlock;
+}
+
+// Leak-guard: scrub the transcript copy that crosses the provider boundary. The stored
+// transcript keeps its originals; only the wire payload is masked.
+function redactTranscriptContext(
+  context: TranscriptContext,
+  named: readonly NamedSecret[],
+): TranscriptContext {
+  const messages = context.messages.map((message) => {
+    const content =
+      typeof message.content === "string"
+        ? redactLeaks(message.content, named)
+        : (message.content as RedactableBlock[]).map((block) => redactLeakBlock(block, named));
+    const copy = { ...message, content } as (typeof context.messages)[number];
+    if (copy.role === "system" && copy.sections) {
+      copy.sections = Object.fromEntries(
+        Object.entries(copy.sections).map(([name, value]) => [
+          name,
+          value === null ? value : redactLeaks(value, named),
+        ]),
+      );
+    }
+    return copy;
+  });
+  return { ...context, messages };
+}
+
 function fallbackAwareModelStream(
   state: FallbackStreamState,
   context: TranscriptContext,
   options: ModelsSimpleStreamOptions | undefined,
 ): AssistantMessageEventStream {
+  // Leak-guard chokepoint: every prompt, history, and tool payload passes through this
+  // stream fn before a model provider sees it — mask secrets at the boundary.
+  const safeContext = redactTranscriptContext(context, state.request.outboundSecrets?.() ?? []);
   const output = new AssistantMessageEventStream();
   let lastPartial: AssistantMessage | undefined;
   const signal = options?.signal ? AbortSignal.any([state.signal, options.signal]) : state.signal;
@@ -2528,7 +2577,7 @@ function fallbackAwareModelStream(
         if (
           !fallbackSupportsContext(
             candidate,
-            context,
+            safeContext,
             options,
             state.request.model.thinkingLevel,
             state.request.tools,
@@ -2566,7 +2615,7 @@ function fallbackAwareModelStream(
         const reasoning = thinkingLevel === "off" ? undefined : thinkingLevel;
         stream = state.stream(
           target,
-          context,
+          safeContext,
           state.request.fallbackModels?.length ? { ...options, apiKey, reasoning } : options,
         );
       } catch (error) {

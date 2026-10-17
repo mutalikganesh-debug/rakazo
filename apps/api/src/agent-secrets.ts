@@ -87,6 +87,14 @@ export async function putAgentSecret(
               where: { id: existing.secretId, spaceId: actor.spaceId },
             });
           }
+          await tx.secretAudit.create({
+            data: {
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              name: updated.name,
+              action: existing ? "update" : "add",
+            },
+          });
           return updated;
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -107,16 +115,43 @@ export async function deleteAgentSecret(
       async (tx) => {
         const existing = await tx.agentSecret.findFirst({
           where: { id, spaceId: actor.spaceId },
-          select: { id: true, secretId: true },
+          select: { id: true, secretId: true, name: true },
         });
         if (!existing) throw new ORPCError("NOT_FOUND");
         await tx.agentSecret.delete({ where: { id: existing.id } });
         await tx.secret.deleteMany({
           where: { id: existing.secretId, spaceId: actor.spaceId },
         });
+        await tx.secretAudit.create({
+          data: {
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            name: existing.name,
+            action: "delete",
+          },
+        });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     ),
   );
   return { ok: true };
+}
+
+export async function revealAgentSecret(
+  deps: AgentSecretDeps,
+  actor: Actor,
+  id: string,
+): Promise<{ name: string; value: string }> {
+  await requireSpaceOwner(deps.prisma, actor);
+  const row = await deps.prisma.agentSecret.findFirst({
+    where: { id, spaceId: actor.spaceId },
+    select: { name: true, secret: { select: { id: true, ciphertext: true } } },
+  });
+  if (!row?.secret) throw new ORPCError("NOT_FOUND");
+  const value = await deps.secrets.load(row.secret.ciphertext, row.secret.id);
+  // Audit who/when/what-name on every reveal; the value itself is never recorded.
+  await deps.prisma.secretAudit.create({
+    data: { spaceId: actor.spaceId, userId: actor.userId, name: row.name, action: "reveal" },
+  });
+  return { name: row.name, value };
 }
