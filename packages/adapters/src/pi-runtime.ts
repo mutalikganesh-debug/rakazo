@@ -2449,7 +2449,7 @@ function fallbackSupportsContext(
   return !requiresReasoning || candidate.model.reasoning;
 }
 
-type RedactableBlock = { type: string; text?: string; arguments?: unknown };
+type RedactableBlock = { type: string; text?: string; thinking?: string; arguments?: unknown };
 
 function redactLeakJsonValue(value: unknown, named: readonly NamedSecret[]): unknown {
   if (typeof value === "string") return redactLeaks(value, named);
@@ -2462,17 +2462,26 @@ function redactLeakJsonValue(value: unknown, named: readonly NamedSecret[]): unk
   return value;
 }
 
+// Scrub text-bearing fields only. Opaque provider payloads — textSignature,
+// thinkingSignature, thoughtSignature, ids — are base64 blobs that can contain
+// sk-/Bearer-shaped substrings; pattern scrubbing them corrupts signed blocks.
 function redactLeakBlock(block: RedactableBlock, named: readonly NamedSecret[]): RedactableBlock {
   if (block.type === "image") return block; // binary payload, never text-scrubbed
   if (block.type === "toolCall") {
     return { ...block, arguments: redactLeakJsonValue(block.arguments, named) };
   }
-  return redactLeakJsonValue(block, named) as RedactableBlock;
+  if (typeof block.text === "string") return { ...block, text: redactLeaks(block.text, named) };
+  if (typeof block.thinking === "string") {
+    return { ...block, thinking: redactLeaks(block.thinking, named) };
+  }
+  return block;
 }
 
 // Leak-guard: scrub the transcript copy that crosses the provider boundary. The stored
-// transcript keeps its originals; only the wire payload is masked.
-function redactTranscriptContext(
+// transcript keeps its originals; only the wire payload is masked. Text-bearing message
+// fields only (content, system sections, tool-result details, error text) — everything
+// else is opaque and passes through untouched.
+export function redactTranscriptContext(
   context: TranscriptContext,
   named: readonly NamedSecret[],
 ): TranscriptContext {
@@ -2486,9 +2495,16 @@ function redactTranscriptContext(
       copy.sections = Object.fromEntries(
         Object.entries(copy.sections).map(([name, value]) => [
           name,
-          value === null ? value : redactLeaks(value, named),
+          typeof value === "string" ? redactLeaks(value, named) : value,
         ]),
       );
+    }
+    const extras = copy as { details?: unknown; errorMessage?: unknown };
+    if (typeof extras.details === "object" && extras.details !== null) {
+      extras.details = redactLeakJsonValue(extras.details, named);
+    }
+    if (typeof extras.errorMessage === "string") {
+      extras.errorMessage = redactLeaks(extras.errorMessage, named);
     }
     return copy;
   });
@@ -2500,9 +2516,6 @@ function fallbackAwareModelStream(
   context: TranscriptContext,
   options: ModelsSimpleStreamOptions | undefined,
 ): AssistantMessageEventStream {
-  // Leak-guard chokepoint: every prompt, history, and tool payload passes through this
-  // stream fn before a model provider sees it — mask secrets at the boundary.
-  const safeContext = redactTranscriptContext(context, state.request.outboundSecrets?.() ?? []);
   const output = new AssistantMessageEventStream();
   let lastPartial: AssistantMessage | undefined;
   const signal = options?.signal ? AbortSignal.any([state.signal, options.signal]) : state.signal;
@@ -2537,6 +2550,20 @@ function fallbackAwareModelStream(
     finishWithThrownError(target, new Error("Model request was aborted"));
     return true;
   };
+  // Leak-guard chokepoint: every prompt, history, and tool payload passes through this
+  // stream fn before a model provider sees it — mask secrets at the boundary. A transcript
+  // we cannot scrub must not reach a provider: fail closed into the stream's error path
+  // instead of throwing before the stream exists.
+  const scrubOrAbort = (): TranscriptContext | undefined => {
+    try {
+      return redactTranscriptContext(context, state.request.outboundSecrets?.() ?? []);
+    } catch (error) {
+      finishWithThrownError(state.getActive(), error);
+      return undefined;
+    }
+  };
+  const safeContext = scrubOrAbort();
+  if (!safeContext) return output;
   const resolveNext = async (
     current: RuntimeModelTarget,
   ): Promise<RuntimeModelTarget | undefined> => {

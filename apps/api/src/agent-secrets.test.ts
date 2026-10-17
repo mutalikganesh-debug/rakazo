@@ -1,6 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
+import {
+  deleteAgentSecret,
+  listAgentSecrets,
+  putAgentSecret,
+  revealAgentSecret,
+} from "./agent-secrets.js";
 
 const actor = {
   userId: "user-1",
@@ -11,6 +16,7 @@ const actor = {
 
 describe("agent secrets", () => {
   const put = vi.fn(async () => ({ id: "secret-1", ciphertext: "cipher" }));
+  const load = vi.fn(async () => "plain-value-never-audited");
   const prisma = {
     spaceMember: {
       findUnique: vi.fn(async () => ({ role: "owner" })),
@@ -99,5 +105,57 @@ describe("agent secrets", () => {
       deleteAgentSecret({ prisma: prisma as never, secrets: { put } }, actor, "as-1"),
     ).resolves.toEqual({ ok: true });
     expect(prisma.agentSecret.delete).toHaveBeenCalledWith({ where: { id: "as-1" } });
+  });
+
+  it("audits a denied reveal attempt", async () => {
+    prisma.spaceMember.findUnique.mockResolvedValue({ role: "member" });
+    await expect(
+      revealAgentSecret({ prisma: prisma as never, secrets: { put, load } }, actor, "as-1"),
+    ).rejects.toBeInstanceOf(ORPCError);
+    expect(prisma.secretAudit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "reveal_denied", name: "as-1" }),
+    });
+  });
+
+  it("audits a failed reveal and never records the revealed value", async () => {
+    prisma.agentSecret.findFirst.mockResolvedValueOnce(null);
+    await expect(
+      revealAgentSecret({ prisma: prisma as never, secrets: { put, load } }, actor, "as-missing"),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(prisma.secretAudit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "reveal_denied", name: "as-missing" }),
+    });
+
+    prisma.agentSecret.findFirst.mockResolvedValueOnce({
+      name: "ACME_TOKEN",
+      secret: { id: "secret-1", ciphertext: "cipher" },
+    });
+    await expect(
+      revealAgentSecret({ prisma: prisma as never, secrets: { put, load } }, actor, "as-1"),
+    ).resolves.toEqual({ name: "ACME_TOKEN", value: "plain-value-never-audited" });
+    expect(prisma.secretAudit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "reveal", name: "ACME_TOKEN" }),
+    });
+    expect(JSON.stringify(prisma.secretAudit.create.mock.calls)).not.toContain(
+      "plain-value-never-audited",
+    );
+  });
+
+  it("rate-limits reveal attempts per user", async () => {
+    const floodActor = { ...actor, userId: "reveal-flood-user" };
+    prisma.agentSecret.findFirst.mockResolvedValue({
+      name: "ACME_TOKEN",
+      secret: { id: "secret-1", ciphertext: "cipher" },
+    });
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await revealAgentSecret(
+        { prisma: prisma as never, secrets: { put, load } },
+        floodActor,
+        "as-1",
+      );
+    }
+    await expect(
+      revealAgentSecret({ prisma: prisma as never, secrets: { put, load } }, floodActor, "as-1"),
+    ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
   });
 });

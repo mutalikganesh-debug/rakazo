@@ -111,20 +111,36 @@ describe("leak-guard redactLeaks", () => {
   it("masks named vault values with stable names and scrubs key patterns", () => {
     const text = [
       "vault value zz-top-secret-value here",
-      "sk-abc123def456",
+      "bare sk-or-v1-abcdefghijkl",
       "Authorization: Bearer ghs_abc123",
-      'payload {"token":"sk-test1234567890"} done',
-      "OPENAI_API_KEY=sk-test1234567890",
+      'payload {"token":"json-secret-123456"} done',
+      "OPENAI_API_KEY=env-secret-123456",
     ].join("\n");
     const out = redactLeaks(text, [{ name: "SUPER_KEY", value: "zz-top-secret-value" }]);
-    expect(out).toContain("vault value [REDACTED:SUPER_KEY] here");
-    expect(out).toContain("[REDACTED:api-key]");
-    expect(out).toContain("[REDACTED:bearer]");
-    expect(out).toContain('"token":"[REDACTED:token]"');
-    expect(out).toContain("OPENAI_API_KEY=[REDACTED:openai_api_key]");
-    expect(out).not.toContain("zz-top-secret-value");
-    expect(out).not.toContain("sk-abc123def456");
-    expect(out).not.toContain("ghs_abc123");
-    expect(out).not.toContain("sk-test1234567890");
+    expect(out).toBe(
+      [
+        "vault value [REDACTED:SUPER_KEY] here",
+        "bare [REDACTED:api-key]",
+        "Authorization=[REDACTED:authorization] [REDACTED:bearer]",
+        'payload {"token":"[REDACTED:token]"} done',
+        "OPENAI_API_KEY=[REDACTED:openai_api_key]",
+      ].join("\n"),
+    );
+  });
+
+  it("masks longer named values first so overlapping values keep their own names", () => {
+    const out = redactLeaks("a: 12345678 b: 1234567890", [
+      { name: "SHORT", value: "12345678" },
+      { name: "LONG", value: "1234567890" },
+    ]);
+    expect(out).toBe("a: [REDACTED:SHORT] b: [REDACTED:LONG]");
+  });
+
+  it("skips named values below the prose floor", () => {
+    const out = redactLeaks("one wxyz1234 two abcd567", [
+      { name: "SHORT", value: "abcd567" },
+      { name: "LONG", value: "wxyz1234" },
+    ]);
+    expect(out).toBe("one [REDACTED:LONG] two abcd567");
   });
 });

@@ -77,7 +77,7 @@ function shouldRedactKey(key: string): boolean {
 export type NamedSecret = { name: string; value: string };
 
 // Short values would mask ordinary prose; real credentials are far longer.
-const NAMED_MIN_LENGTH = 4;
+const NAMED_MIN_LENGTH = 8;
 
 /**
  * Leak-guard for outbound content (model providers, tool payloads): known secret values

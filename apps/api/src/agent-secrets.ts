@@ -137,21 +137,53 @@ export async function deleteAgentSecret(
   return { ok: true };
 }
 
+// Per-user reveal rate limit (sliding window).
+// ponytail: per-process memory — share via the RateLimit table if api ever scales out
+const REVEAL_RATE = { windowMs: 60_000, max: 10 };
+const revealAttempts = new Map<string, number[]>();
+
+function revealRateLimited(userId: string, now = Date.now()): boolean {
+  const recent = (revealAttempts.get(userId) ?? []).filter((at) => now - at < REVEAL_RATE.windowMs);
+  recent.push(now);
+  revealAttempts.set(userId, recent);
+  return recent.length > REVEAL_RATE.max;
+}
+
 export async function revealAgentSecret(
   deps: AgentSecretDeps,
   actor: Actor,
   id: string,
 ): Promise<{ name: string; value: string }> {
-  await requireSpaceOwner(deps.prisma, actor);
+  // Denied and failed attempts are audited too — a probing attacker must be visible.
+  // Rate-limited attempts are not: the limit is what bounds audit-table growth.
+  const audit = (action: "reveal" | "reveal_denied", name: string) =>
+    deps.prisma.secretAudit.create({
+      data: { spaceId: actor.spaceId, userId: actor.userId, name, action },
+    });
+  if (revealRateLimited(actor.userId)) throw new ORPCError("TOO_MANY_REQUESTS");
+  try {
+    await requireSpaceOwner(deps.prisma, actor);
+  } catch (error) {
+    // Denied attempts record the requested id, not a name — the caller never saw one.
+    await audit("reveal_denied", id);
+    throw error;
+  }
   const row = await deps.prisma.agentSecret.findFirst({
     where: { id, spaceId: actor.spaceId },
     select: { name: true, secret: { select: { id: true, ciphertext: true } } },
   });
-  if (!row?.secret) throw new ORPCError("NOT_FOUND");
-  const value = await deps.secrets.load(row.secret.ciphertext, row.secret.id);
+  if (!row?.secret) {
+    await audit("reveal_denied", id);
+    throw new ORPCError("NOT_FOUND");
+  }
+  let value: string;
+  try {
+    value = await deps.secrets.load(row.secret.ciphertext, row.secret.id);
+  } catch (error) {
+    await audit("reveal_denied", row.name);
+    throw error;
+  }
   // Audit who/when/what-name on every reveal; the value itself is never recorded.
-  await deps.prisma.secretAudit.create({
-    data: { spaceId: actor.spaceId, userId: actor.userId, name: row.name, action: "reveal" },
-  });
+  await audit("reveal", row.name);
   return { name: row.name, value };
 }
