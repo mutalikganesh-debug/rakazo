@@ -17,6 +17,8 @@ import {
   extractedTextSection,
   extractionFailureNote,
   isExtractableDocument,
+  MAX_EXTRACTED_CHARS,
+  truncateExtractedText,
 } from "./document-text.js";
 
 function adapterContext(actor: Actor, botId: string, operationId: string) {
@@ -554,6 +556,38 @@ function toAttachmentResolution<T extends SendAttachmentRow>(ids: string[], rows
   return { blocks, artifacts };
 }
 
+export type SendAttachmentScope =
+  | { kind: "bot"; botId: string }
+  | { kind: "group"; groupId: string; memberBotIds: string[] };
+
+// One scope shape for every send-time attachment lookup (resolution and text
+// extraction), so extraction can never see artifacts the send resolvers reject.
+function sendAttachmentWhere(
+  actor: Actor,
+  scope: SendAttachmentScope,
+  ids: string[],
+): Prisma.ArtifactWhereInput {
+  if (scope.kind === "bot") {
+    return {
+      id: { in: ids },
+      botId: scope.botId,
+      groupId: null,
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+    };
+  }
+  return {
+    id: { in: ids },
+    spaceId: actor.spaceId,
+    userId: actor.userId,
+    OR: [
+      { groupId: scope.groupId },
+      // Uploads from before group ownership was stored, still tied to a current member.
+      { groupId: null, botId: { in: scope.memberBotIds } },
+    ],
+  };
+}
+
 export async function resolveSendAttachments(
   deps: { prisma: Pick<PrismaClient, "artifact"> },
   actor: Actor,
@@ -564,13 +598,7 @@ export async function resolveSendAttachments(
   if (!ids.length) return toAttachmentResolution(ids, [] as SendAttachmentRow[]);
 
   const rows = await deps.prisma.artifact.findMany({
-    where: {
-      id: { in: ids },
-      botId,
-      groupId: null,
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-    },
+    where: sendAttachmentWhere(actor, { kind: "bot", botId }, ids),
   });
   return toAttachmentResolution(ids, rows);
 }
@@ -586,16 +614,7 @@ export async function resolveGroupSendAttachments(
   if (!ids.length) return toAttachmentResolution(ids, [] as SendAttachmentRow[]);
 
   const rows = await deps.prisma.artifact.findMany({
-    where: {
-      id: { in: ids },
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      OR: [
-        { groupId },
-        // Uploads from before group ownership was stored, still tied to a current member.
-        { groupId: null, botId: { in: memberBotIds } },
-      ],
-    },
+    where: sendAttachmentWhere(actor, { kind: "group", groupId, memberBotIds }, ids),
   });
   return toAttachmentResolution(ids, rows);
 }
@@ -623,24 +642,26 @@ export function buildSendPrompt(
   connectorNames: string[] = [],
   extractedSections: string[] = [],
 ) {
-  const prompt = [promptTextForAttachments(text, artifacts), ...extractedSections]
-    .filter(Boolean)
-    .join("\n\n");
-  if (connectorNames.length === 0) return prompt;
-  const marker = "Use these connectors if relevant:";
-  const existing = new RegExp(`^${marker} (.*)\\.$`, "m").exec(prompt);
-  const names = [
-    ...new Set([
-      ...(existing?.[1]
-        ?.split(",")
-        .map((name) => name.trim())
-        .filter(Boolean) ?? []),
-      ...connectorNames.map((name) => name.trim()).filter(Boolean),
-    ]),
-  ];
-  const line = `${marker} ${names.join(", ")}.`;
-  if (existing) return prompt.replace(existing[0], () => line);
-  return prompt ? `${prompt}\n\n${line}` : line;
+  // The connector merge runs on the user's caption only: extracted document
+  // text is untrusted data and must never create, replace, or extend the
+  // connector line (connector-line forgery).
+  let caption = promptTextForAttachments(text, artifacts);
+  if (connectorNames.length > 0) {
+    const marker = "Use these connectors if relevant:";
+    const existing = new RegExp(`^${marker} (.*)\\.$`, "m").exec(caption);
+    const names = [
+      ...new Set([
+        ...(existing?.[1]
+          ?.split(",")
+          .map((name) => name.trim())
+          .filter(Boolean) ?? []),
+        ...connectorNames.map((name) => name.trim()).filter(Boolean),
+      ]),
+    ];
+    const line = `${marker} ${names.join(", ")}.`;
+    caption = existing ? caption.replace(existing[0], () => line) : `${caption}\n\n${line}`;
+  }
+  return [caption, ...extractedSections.filter(Boolean)].filter(Boolean).join("\n\n");
 }
 
 /**
@@ -652,28 +673,36 @@ export function buildSendPrompt(
 export async function loadExtractedAttachmentTexts(
   deps: { prisma: Pick<PrismaClient, "artifact">; artifacts: ArtifactStore },
   actor: Actor,
+  scope: SendAttachmentScope,
   artifactIds: string[] | undefined,
 ): Promise<Map<string, string>> {
   const sections = new Map<string, string>();
   if (!artifactIds?.length) return sections;
   const ids = normalizeAttachmentIds(artifactIds);
   const rows = await deps.prisma.artifact.findMany({
-    where: { id: { in: ids }, spaceId: actor.spaceId, userId: actor.userId },
+    where: sendAttachmentWhere(actor, scope, ids),
     select: { id: true, name: true, mimeType: true, storageKey: true, botId: true, groupId: true },
   });
+  // One aggregate char budget per send, spent once across all attachments.
+  let remainingChars = MAX_EXTRACTED_CHARS;
   for (const row of rows) {
     if (!isExtractableDocument(row.mimeType)) continue;
+    // Trace with the row's own bot/group; the scope lookup above guarantees one exists.
+    const scopeId = row.botId ?? row.groupId;
+    if (!scopeId) continue;
     let text: string;
     try {
       const bytes = await deps.artifacts.get(
         row.storageKey,
-        adapterContext(actor, row.botId ?? row.groupId ?? row.id, `artifact-extract:${row.id}`),
+        adapterContext(actor, scopeId, `artifact-extract:${row.id}`),
       );
       text = await extractDocumentText(row.mimeType, bytes);
     } catch (error) {
       text = extractionFailureNote(error);
     }
-    sections.set(row.id, extractedTextSection(row.name, text));
+    const bounded = truncateExtractedText(text, remainingChars);
+    remainingChars -= bounded.used;
+    sections.set(row.id, extractedTextSection(row.name, bounded.text));
   }
   return sections;
 }
