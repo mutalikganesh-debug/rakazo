@@ -48,6 +48,7 @@ function withVoicePreference<
       id: string;
       userId: string;
       provider: string;
+      baseUrl: string | null;
       secretId: string;
       createdAt: Date;
       updatedAt: Date;

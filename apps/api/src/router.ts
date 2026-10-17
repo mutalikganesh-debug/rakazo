@@ -6078,6 +6078,7 @@ export function createRouter(deps: RouterDeps) {
           plaintext: input.apiKey,
           voiceId: input.voiceId,
           speechModel: input.speechModel,
+          baseUrl: input.baseUrl,
           signal: context.signal,
         }),
       ),

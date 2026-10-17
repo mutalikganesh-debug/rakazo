@@ -19,9 +19,18 @@ import {
   voiceHttpError,
 } from "./voice-http.js";
 
-const API = "https://api.openai.com/v1";
+const DEFAULT_API = "https://api.openai.com/v1";
 const TTS_MODEL = "gpt-4o-mini-tts";
 const STT_MODEL = "gpt-4o-mini-transcribe";
+
+/**
+ * API base for OpenAI-compatible voice servers. An empty override keeps the
+ * OpenAI default; trailing slashes are dropped so `${base}/audio/speech` never
+ * double-slashes.
+ */
+export function openAiVoiceBase(baseUrl?: string | null): string {
+  return (baseUrl ?? "").trim().replace(/\/+$/, "") || DEFAULT_API;
+}
 
 const OPENAI_VOICES: VoiceInfo[] = [
   { id: "alloy", label: "Alloy", description: "Neutral" },
@@ -47,9 +56,13 @@ export class OpenAIVoiceProvider implements VoiceProvider {
     };
   }
 
-  async verify(apiKey: string, context: AdapterContext): Promise<VoiceVerifyResult> {
+  async verify(
+    apiKey: string,
+    context: AdapterContext,
+    options?: { baseUrl?: string },
+  ): Promise<VoiceVerifyResult> {
     return verifyVoiceHttpGet({
-      url: `${API}/models`,
+      url: `${openAiVoiceBase(options?.baseUrl)}/models`,
       headers: { authorization: `Bearer ${apiKey}` },
       signal: context.signal,
       provider: "OpenAI",
@@ -62,14 +75,14 @@ export class OpenAIVoiceProvider implements VoiceProvider {
 
   async synthesize(request: VoiceSynthesizeRequest, context: AdapterContext): Promise<SpeechClip> {
     const signal = voiceDeadline(request.signal ?? context.signal, 60_000);
-    const res = await fetch(`${API}/audio/speech`, {
+    const res = await fetch(`${openAiVoiceBase(request.baseUrl)}/audio/speech`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${request.apiKey}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: TTS_MODEL,
+        model: request.model?.trim() || TTS_MODEL,
         voice: request.voiceId,
         input: request.text,
         response_format: "mp3",
@@ -91,7 +104,7 @@ export class OpenAIVoiceProvider implements VoiceProvider {
       new Blob([new Uint8Array(request.audio)], { type: request.mimeType || "audio/webm" }),
       speechUploadName(request.mimeType),
     );
-    const res = await fetch(`${API}/audio/transcriptions`, {
+    const res = await fetch(`${openAiVoiceBase(request.baseUrl)}/audio/transcriptions`, {
       method: "POST",
       headers: { authorization: `Bearer ${request.apiKey}` },
       body: form,

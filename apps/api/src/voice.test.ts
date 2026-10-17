@@ -393,7 +393,7 @@ describe("updateVoiceSpeechModel", () => {
 
     await expect(
       updateVoiceSpeechModel(deps, actor, { provider: "elevenlabs", speechModel: "s1" }),
-    ).rejects.toThrow("Speech model applies to Fish Audio.");
+    ).rejects.toThrow("Speech model applies to Fish Audio and OpenAI.");
     expect(update).not.toHaveBeenCalled();
   });
 });

@@ -913,6 +913,7 @@ export const appContract = {
           apiKey: z.string().min(8),
           voiceId: z.string().max(120).optional(),
           speechModel: z.string().max(64).optional(),
+          baseUrl: z.string().max(512).optional(),
         }),
       )
       .output(VoiceCredentialSchema),

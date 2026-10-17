@@ -69,6 +69,7 @@ export function toVoiceCredential(row: {
   isDefault: boolean;
   voiceId: string;
   speechModel?: string | null;
+  baseUrl?: string | null;
 }): VoiceCredential {
   return {
     id: row.id,
@@ -77,11 +78,37 @@ export function toVoiceCredential(row: {
     isDefault: row.isDefault,
     voiceId: row.voiceId,
     speechModel: row.speechModel ?? "",
+    baseUrl: row.baseUrl ?? "",
     transcribe: Boolean(catalogEntry(row.provider)?.transcribe),
   };
 }
 
 const FISH_AUDIO_PROVIDER = "fish-audio";
+const SPEECH_MODEL_PROVIDERS = new Set([FISH_AUDIO_PROVIDER, "openai"]);
+
+/** Empty clears the override. Fish validates the model id; other providers take a plain id. */
+export function speechModelValue(provider: string, speechModel: string): string | null {
+  if (provider === FISH_AUDIO_PROVIDER) return fishSpeechModelValue(speechModel);
+  return speechModel.trim() || null;
+}
+
+/** Empty clears the override (provider default). Otherwise an http(s) base URL. */
+export function voiceBaseUrlValue(baseUrl: string): string | null {
+  const trimmed = baseUrl.trim().replace(/\/+$/, "");
+  if (!trimmed) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new ORPCError("BAD_REQUEST", { message: "That base URL is not a valid URL." });
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "That base URL must start with http:// or https://.",
+    });
+  }
+  return trimmed;
+}
 
 /** Empty clears the Fish override. Anything else must be a header-safe model id. */
 export function fishSpeechModelValue(speechModel: string): string | null {
@@ -138,6 +165,7 @@ export async function persistVoiceCredential(
     plaintext: string;
     voiceId?: string;
     speechModel?: string;
+    baseUrl?: string;
     signal?: AbortSignal;
   },
 ): Promise<VoiceCredential> {
@@ -145,11 +173,23 @@ export async function persistVoiceCredential(
     throw new ORPCError("BAD_REQUEST", { message: "Unknown voice provider." });
   }
   const requestedSpeechModel =
-    input.provider === FISH_AUDIO_PROVIDER && input.speechModel !== undefined
-      ? fishSpeechModelValue(input.speechModel)
+    input.speechModel !== undefined && SPEECH_MODEL_PROVIDERS.has(input.provider)
+      ? speechModelValue(input.provider, input.speechModel)
       : undefined;
+  const requestedBaseUrl =
+    input.baseUrl !== undefined ? voiceBaseUrlValue(input.baseUrl) : undefined;
   const provider = createVoiceProvider(input.provider);
-  const verified = await provider.verify(input.plaintext, voiceContext(actor, input.signal));
+  // A key replace without a base URL keeps the endpoint already on the credential.
+  const existingBaseUrl = (
+    await deps.prisma.userVoiceCredential.findFirst({
+      where: { userId: actor.userId, provider: input.provider },
+      orderBy: newestVoiceCredentialOrder,
+      select: { baseUrl: true },
+    })
+  )?.baseUrl;
+  const verified = await provider.verify(input.plaintext, voiceContext(actor, input.signal), {
+    baseUrl: requestedBaseUrl ?? existingBaseUrl ?? undefined,
+  });
   if (!verified.ok) {
     throw new ORPCError("BAD_REQUEST", { message: verified.message ?? "That key was rejected." });
   }
@@ -181,11 +221,15 @@ export async function persistVoiceCredential(
                 userId: actor.userId,
                 provider: input.provider,
                 secretId: secret.id,
+                baseUrl: requestedBaseUrl ?? null,
               },
             })
           : await tx.userVoiceCredential.update({
               where: { id: existing.id },
-              data: { secretId: secret.id },
+              data: {
+                secretId: secret.id,
+                ...(requestedBaseUrl !== undefined ? { baseUrl: requestedBaseUrl } : {}),
+              },
             });
         const previousPreference = existing
           ? await tx.spaceVoicePreference.findUnique({
@@ -266,10 +310,12 @@ export async function updateVoiceSpeechModel(
   actor: Actor,
   input: { provider: string; speechModel: string },
 ): Promise<VoiceCredential> {
-  if (input.provider !== FISH_AUDIO_PROVIDER) {
-    throw new ORPCError("BAD_REQUEST", { message: "Speech model applies to Fish Audio." });
+  if (!SPEECH_MODEL_PROVIDERS.has(input.provider)) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Speech model applies to Fish Audio and OpenAI.",
+    });
   }
-  const speechModel = fishSpeechModelValue(input.speechModel);
+  const speechModel = speechModelValue(input.provider, input.speechModel);
   return withSerializableRetry(() =>
     deps.prisma.$transaction(
       async (tx) => {
@@ -359,6 +405,7 @@ export async function synthesizeVoice(
       voiceId: target.voiceId,
       apiKey: target.apiKey,
       model: target.cred.speechModel || undefined,
+      baseUrl: target.cred.baseUrl || undefined,
       signal: input.signal,
     },
     voiceContext(actor, input.signal),
@@ -386,6 +433,7 @@ export async function transcribeVoice(
       audio: input.audio,
       mimeType: input.mimeType || "audio/webm",
       language: input.language,
+      baseUrl: loaded.cred.baseUrl || undefined,
       apiKey: loaded.apiKey,
       signal: input.signal,
     },

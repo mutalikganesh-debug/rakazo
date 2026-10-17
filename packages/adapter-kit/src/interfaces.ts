@@ -365,7 +365,11 @@ export interface ExecutionRunner {
 
 export interface VoiceProvider {
   describe(): AdapterDescriptor<VoiceCapabilities>;
-  verify(apiKey: string, context: AdapterContext): Promise<VoiceVerifyResult>;
+  verify(
+    apiKey: string,
+    context: AdapterContext,
+    options?: { baseUrl?: string },
+  ): Promise<VoiceVerifyResult>;
   listVoices(apiKey: string, context: AdapterContext): Promise<VoiceInfo[]>;
   synthesize(request: VoiceSynthesizeRequest, context: AdapterContext): Promise<SpeechClip>;
   transcribe?(request: VoiceTranscribeRequest, context: AdapterContext): Promise<{ text: string }>;

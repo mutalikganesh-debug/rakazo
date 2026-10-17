@@ -615,6 +615,8 @@ export interface VoiceSynthesizeRequest {
   apiKey: string;
   /** Connection speech model. Fish uses this, then `FISH_TTS_MODEL`, then s2.1-pro. */
   model?: string;
+  /** Connection base URL override for OpenAI-compatible servers. Empty keeps the provider default. */
+  baseUrl?: string;
   signal?: AbortSignal;
 }
 
@@ -628,6 +630,8 @@ export interface VoiceTranscribeRequest {
    * one language into lookalike words of another.
    */
   language?: string;
+  /** Connection base URL override for OpenAI-compatible servers. Empty keeps the provider default. */
+  baseUrl?: string;
   signal?: AbortSignal;
 }
 
