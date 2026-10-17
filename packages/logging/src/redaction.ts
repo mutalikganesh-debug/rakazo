@@ -57,7 +57,7 @@ const SECRET_ASSIGNMENT =
 const JSON_SECRET_FIELD =
   /"(password|passwd|secret|token|authorization|apikey|api_key|accesstoken|refreshtoken|email|cookie)"\s*:\s*"(?:\\.|[^"\\])*"/gi;
 const BARE_SECRET =
-  /\b(?:sk-(?:or-v1-)?[A-Za-z0-9_-]{8,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|(?:ak_|ck_)[A-Za-z0-9]+)\b/g;
+  /\b(?:sk-(?:or-v1-)?[A-Za-z0-9_-]{8,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|(?:ak_|ck_)[A-Za-z0-9]+|gh[pousr]_[A-Za-z0-9]{6,})\b/g;
 
 export function redactSensitiveText(text: string): string {
   return text
@@ -98,4 +98,19 @@ export function redactLeaks(text: string, named: readonly NamedSecret[] = []): s
     .replace(BEARER, "Bearer [REDACTED:bearer]")
     .replace(SECRET_ASSIGNMENT, (_match, key: string) => `${key}=[REDACTED:${key.toLowerCase()}]`)
     .replace(BARE_SECRET, "[REDACTED:api-key]");
+}
+
+/**
+ * Deep variant for stored/sent content (message blocks, event payloads): scrubs
+ * every string inside a JSON-ish value, leaving non-strings untouched.
+ */
+export function redactLeaksDeep(value: unknown, named: readonly NamedSecret[] = []): unknown {
+  if (typeof value === "string") return redactLeaks(value, named);
+  if (Array.isArray(value)) return value.map((item) => redactLeaksDeep(item, named));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, redactLeaksDeep(nested, named)]),
+    );
+  }
+  return value;
 }

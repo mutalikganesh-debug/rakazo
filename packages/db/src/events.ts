@@ -24,6 +24,7 @@ import {
   assertRunIsCancelled,
   createThreadMessageInTransaction,
   RunHistoryWriteError,
+  redactBotReply,
 } from "./messages.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
@@ -1452,7 +1453,13 @@ export async function appendEventInTransaction(
     await assertRunCanWriteHistory(tx, input.runId, { allowCancelled: input.allowCancelledRun });
   }
   // Unpaired UTF-16 surrogates (e.g. a split emoji high half) are invalid JSON for Postgres.
-  const payload = sanitizeJsonValue(input.payload);
+  // Reply leak-guard: bot reply payloads are masked before the event is stored and
+  // fanned out live, so nothing secret reaches chat through the realtime path either.
+  const payload = sanitizeJsonValue(
+    (input.payload as { role?: string } | undefined)?.role === "bot"
+      ? redactBotReply(input.payload)
+      : input.payload,
+  );
   return tx.event.create({
     data: {
       spaceId: input.spaceId,

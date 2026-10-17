@@ -1,5 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { clearKnownSecrets, registerKnownSecrets } from "@rakazo/core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prisma, PrismaClient } from "./client.js";
+import { appendEventInTransaction } from "./events.js";
 import {
   createThreadMessage,
   createThreadMessageInTransaction,
@@ -89,5 +91,69 @@ describe("createThreadMessage", () => {
       }),
     ).rejects.toThrow("unique constraint");
     expect(run).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("reply leak-guard", () => {
+  const vaultValue = "vault-value-9f8e7d6c5b";
+
+  beforeEach(() => {
+    clearKnownSecrets();
+    registerKnownSecrets([{ name: "OPENAI_API_KEY", value: vaultValue }]);
+  });
+
+  it("masks registered vault values and key patterns in stored bot replies", async () => {
+    const tx = transaction();
+    await createThreadMessageInTransaction(tx as unknown as Prisma.TransactionClient, {
+      threadId: "thread-1",
+      role: "bot",
+      blocks: [
+        {
+          kind: "text",
+          text: `Here is ${vaultValue}, key sk-abc1234567890, and Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl`,
+        },
+      ],
+    });
+    const stored = JSON.stringify(tx.message.create.mock.calls.at(0));
+    expect(stored).not.toContain(vaultValue);
+    expect(stored).not.toContain("sk-abc1234567890");
+    expect(stored).not.toContain("c2lnbmF0dXJl");
+    expect(stored).toContain("[REDACTED:OPENAI_API_KEY]");
+  });
+
+  it("leaves user messages and ordinary text alone", async () => {
+    const tx = transaction();
+    await createThreadMessageInTransaction(tx as unknown as Prisma.TransactionClient, {
+      threadId: "thread-1",
+      role: "user",
+      blocks: [{ kind: "text", text: `my note ${vaultValue} token: 5` }],
+    });
+    const stored = JSON.stringify(tx.message.create.mock.calls.at(0));
+    expect(stored).toContain(vaultValue);
+    expect(stored).toContain("token: 5");
+  });
+
+  it("masks bot reply payloads on the realtime event path", async () => {
+    const createEvent = vi.fn().mockResolvedValue({ id: "event-1", seq: 1, threadId: "thread-1" });
+    const tx = {
+      thread: { update: vi.fn().mockResolvedValue({ nextEventSeq: 1 }) },
+      run: { findUnique: vi.fn().mockResolvedValue({ status: "running" }) },
+      event: { create: createEvent },
+    };
+    await appendEventInTransaction(tx as unknown as Prisma.TransactionClient, {
+      spaceId: "space-1",
+      threadId: "thread-1",
+      botId: "bot-1",
+      type: "thread.message.created",
+      payload: {
+        messageId: "message-1",
+        role: "bot",
+        blocks: [{ kind: "text", text: `echo ${vaultValue} sk-abc1234567890` }],
+      },
+    });
+    const stored = JSON.stringify(createEvent.mock.calls.at(0));
+    expect(stored).not.toContain(vaultValue);
+    expect(stored).not.toContain("sk-abc1234567890");
+    expect(stored).toContain("[REDACTED:OPENAI_API_KEY]");
   });
 });

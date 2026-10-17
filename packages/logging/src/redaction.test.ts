@@ -115,6 +115,7 @@ describe("leak-guard redactLeaks", () => {
       "Authorization: Bearer ghs_abc123",
       'payload {"token":"json-secret-123456"} done',
       "OPENAI_API_KEY=env-secret-123456",
+      "github token ghs_abc123 inline",
     ].join("\n");
     const out = redactLeaks(text, [{ name: "SUPER_KEY", value: "zz-top-secret-value" }]);
     expect(out).toBe(
@@ -124,6 +125,7 @@ describe("leak-guard redactLeaks", () => {
         "Authorization=[REDACTED:authorization] [REDACTED:bearer]",
         'payload {"token":"[REDACTED:token]"} done',
         "OPENAI_API_KEY=[REDACTED:openai_api_key]",
+        "github token [REDACTED:api-key] inline",
       ].join("\n"),
     );
   });

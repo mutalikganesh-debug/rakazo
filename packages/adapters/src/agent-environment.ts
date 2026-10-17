@@ -1,6 +1,6 @@
 import type { SecretStore } from "@rakazo/adapter-kit";
 import { AgentSecretInputSchema } from "@rakazo/contracts";
-import { redactSecrets } from "@rakazo/core";
+import { redactSecrets, registerKnownSecrets } from "@rakazo/core";
 
 type EncryptedAgentSecret = {
   name: string;
@@ -11,7 +11,7 @@ export async function decryptAgentEnvironment(
   rows: EncryptedAgentSecret[],
   secrets: Pick<SecretStore, "load">,
 ): Promise<Record<string, string>> {
-  return Object.fromEntries(
+  const environment: Record<string, string> = Object.fromEntries(
     await Promise.all(
       rows.map(async (row) => {
         AgentSecretInputSchema.shape.name.parse(row.name);
@@ -19,6 +19,9 @@ export async function decryptAgentEnvironment(
       }),
     ),
   );
+  // Reply leak-guard: vault values must be masked wherever reply text is stored.
+  registerKnownSecrets(Object.entries(environment).map(([name, value]) => ({ name, value })));
+  return environment;
 }
 
 export function formatAgentEnvironmentInstruction(
