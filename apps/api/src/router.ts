@@ -3101,13 +3101,7 @@ export function createRouter(deps: RouterDeps) {
               controlToken: computer.controlLeaseId,
               cwd: resolveBotWorkspaceCwd(parseComputerMode(computer.scope), bot.id, undefined),
             },
-            await computerScreenContext(
-              deps.prisma,
-              context.actor,
-              computer.id,
-              bot.id,
-              "terminal",
-            ),
+            computerScreenContext(context.actor, bot.id, "terminal", computer),
           )
           .catch((error: unknown) => clearGoneSandbox(deps, computer, error));
         if (!session) return { url: null };
@@ -3150,7 +3144,7 @@ export function createRouter(deps: RouterDeps) {
                   ? (computer.controlLeaseId ?? undefined)
                   : undefined,
             },
-            await computerScreenContext(deps.prisma, context.actor, computer.id, bot.id, "screen"),
+            computerScreenContext(context.actor, bot.id, "screen", computer),
           )
           .catch(async (error: unknown) => {
             if (isComputerScreenUnavailable(error)) {
@@ -6722,20 +6716,30 @@ async function bindWaitingTakeoverToControl(
   });
 }
 
-async function computerScreenContext(
-  prisma: PrismaClient,
+/**
+ * The human at the screen acts under their own control lease. Borrowing a run's
+ * fence here makes user screen input look like a delayed execution, and the run's
+ * next lease renewal stale-rejects it.
+ */
+function computerScreenContext(
   actor: Actor,
-  computerId: string,
   botId: string,
   operationId: string,
-): Promise<AdapterContext> {
+  computer:
+    | {
+        controlHolder: string;
+        controlLeaseId: string | null;
+        controlLeaseExpiresAt: Date | null;
+        controlBotId: string | null;
+      }
+    | null
+    | undefined,
+): AdapterContext {
   const context = computerContext(actor, botId, operationId);
-  const lease = await prisma.computerExecutionLease.findUnique({
-    where: { computerId_botId: { computerId, botId } },
-    select: { runId: true, fence: true, expiresAt: true },
-  });
-  if (!lease || lease.expiresAt.getTime() <= Date.now()) return context;
-  return { ...context, screenLeaseId: screenLeaseIdForRun(lease, lease.runId) };
+  const controlLeaseId = computer?.controlLeaseId;
+  if (!computer || !controlLeaseId) return context;
+  if (!hasActiveComputerControl(computer) || computer.controlBotId !== botId) return context;
+  return { ...context, screenLeaseId: controlLeaseId };
 }
 
 async function deploymentDto(prisma: PrismaClient, sandboxProvider: string) {
