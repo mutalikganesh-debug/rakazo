@@ -316,32 +316,16 @@ async function openMic(): Promise<void> {
   const { botId } = state;
   const mine = () => !controller.signal.aborted && state?.botId === botId;
   try {
-    if (onDevice !== false) {
-      // The session stays open until it delivers a turn, so the microphone is still the
-      // caller's while the reply plays and a barge-in can land.
-      const started = await deps.dictate(
-        {
-          onInterim: (text) => {
-            if (mine()) heardInterim(text);
-          },
-          onFinal: (text) => {
-            if (mine()) void handleTranscript(text);
-          },
-        },
-        controller.signal,
-      );
-      if (started) {
-        onDevice = true;
-        return;
-      }
-      onDevice = false;
-    }
+    if (onDevice !== false && (await tryDeviceDictation(controller, mine))) return;
     // Muting or hanging up while the device was deciding: no microphone after all.
     if (!mine() || !state || state.muted) {
       micOpen = false;
       return;
     }
     if (!canTranscribe) {
+      // The provider cannot transcribe: on-device dictation is the only way this call can
+      // still hear the caller, so try it again before giving up on the turn.
+      if (await tryDeviceDictation(controller, mine)) return;
       micOpen = false;
       set({
         caption: t(
@@ -352,7 +336,16 @@ async function openMic(): Promise<void> {
     }
     const clip = await deps.record(controller.signal);
     if (!mine()) return;
-    const text = clip ? await deps.transcribe(clip, controller.signal) : "";
+    let text = "";
+    try {
+      text = clip ? await deps.transcribe(clip, controller.signal) : "";
+    } catch (error) {
+      // Provider transcription failed: fall back to on-device dictation whenever the
+      // device can hear the caller; only a turn nothing can hear fails outright.
+      if (!mine()) return;
+      if (await tryDeviceDictation(controller, mine)) return;
+      throw error;
+    }
     if (!mine()) return;
     micOpen = false;
     await handleTranscript(text);
@@ -361,6 +354,30 @@ async function openMic(): Promise<void> {
     if (!mine()) return;
     failTurn(error);
   }
+}
+
+/**
+ * One on-device dictation attempt. True when the device took the microphone: the session
+ * stays open until it delivers a turn, so the microphone is still the caller's while the
+ * reply plays and a barge-in can land. False when this device cannot recognise speech.
+ */
+async function tryDeviceDictation(
+  controller: AbortController,
+  mine: () => boolean,
+): Promise<boolean> {
+  const started = await deps.dictate(
+    {
+      onInterim: (text) => {
+        if (mine()) heardInterim(text);
+      },
+      onFinal: (text) => {
+        if (mine()) void handleTranscript(text);
+      },
+    },
+    controller.signal,
+  );
+  onDevice = started;
+  return started;
 }
 
 /** One finished turn: drop the reply leaking back, cut in over playback, or send it. */

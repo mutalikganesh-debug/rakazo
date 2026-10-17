@@ -54,15 +54,43 @@ describe("mobile voice call entry", () => {
     expect(fakes.dictationAvailable).not.toHaveBeenCalled();
   });
 
-  it("keeps provider setup when only on-device dictation is available", async () => {
+  it("starts an on-device call when only on-device dictation is available", async () => {
     const fakes = deps({
       deviceVoice: false,
       dictation: true,
       status: { ready: false, transcribe: false },
     });
 
+    await expect(resolveVoiceCallPlan(fakes)).resolves.toEqual({
+      kind: "device",
+      transcribe: false,
+    });
+    expect(fakes.dictationAvailable).toHaveBeenCalledOnce();
+  });
+
+  it("opens provider setup only when nothing can hear the caller", async () => {
+    const fakes = deps({
+      deviceVoice: false,
+      dictation: false,
+      status: { ready: false, transcribe: false },
+    });
+
     await expect(resolveVoiceCallPlan(fakes)).resolves.toEqual({ kind: "settings" });
-    expect(fakes.dictationAvailable).not.toHaveBeenCalled();
+    expect(fakes.dictationAvailable).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to on-device dictation when the provider probe fails", async () => {
+    const fakes = deps({
+      deviceVoice: false,
+      dictation: true,
+      status: { ready: false, transcribe: false },
+    });
+    fakes.loadVoiceStatus.mockRejectedValueOnce(new Error("offline"));
+
+    await expect(resolveVoiceCallPlan(fakes)).resolves.toEqual({
+      kind: "device",
+      transcribe: false,
+    });
   });
 
   it("falls back to provider transcription when local dictation is unavailable", async () => {

@@ -15,7 +15,8 @@ export type VoiceCallPlanDeps = {
 /**
  * Chooses the call input/output path before any provider setup is required.
  * A device voice preference is fail-closed like speakText: a read failure must
- * not turn a local-only reply into hosted voice traffic.
+ * not turn a local-only reply into hosted voice traffic. Settings is only ever the
+ * answer when nothing can hear the caller: on-device dictation opens a working call.
  */
 export async function resolveVoiceCallPlan(deps: VoiceCallPlanDeps): Promise<VoiceCallPlan> {
   let deviceVoiceEnabled = false;
@@ -30,8 +31,19 @@ export async function resolveVoiceCallPlan(deps: VoiceCallPlanDeps): Promise<Voi
     return { kind: "device", transcribe: false };
   }
 
-  const status = await deps.loadVoiceStatus();
+  // A probe that fails is a provider that is not there, and an unreachable provider must
+  // never dead-end the mic at the settings panel.
+  let status: VoiceCallStatus;
+  try {
+    status = await deps.loadVoiceStatus();
+  } catch {
+    status = { ready: false, transcribe: false };
+  }
+
   if (!status.ready) {
+    // No provider: on-device dictation still opens a working call whenever the device can
+    // hear the caller, whatever the device-voice preference is set to.
+    if (await deps.dictationAvailable()) return { kind: "device", transcribe: false };
     return deviceVoiceEnabled ? { kind: "dictation" } : { kind: "settings" };
   }
 

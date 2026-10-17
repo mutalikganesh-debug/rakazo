@@ -549,6 +549,66 @@ describe("mobile call session", () => {
     expect(getSnapshot()).toBeNull();
   });
 
+  it("falls back to on-device dictation when provider transcription fails", async () => {
+    const fake = fakes();
+    let attempts = 0;
+    const dictated: DictationHandlers[] = [];
+    startCall(
+      { botId: "bot-1", botName: "Ada" },
+      {
+        ...fake.deps,
+        dictate: async (next, signal) => {
+          fake.signals.push(signal);
+          attempts += 1;
+          if (attempts === 1) return false;
+          dictated.push(next);
+          return true;
+        },
+        transcribe: () => Promise.reject(new Error("transcription offline")),
+      },
+    );
+    await flush();
+    fake.say("can you hear me");
+    await flush();
+
+    expect(attempts).toBe(2);
+    expect(dictated).toHaveLength(1);
+    expect(getSnapshot()?.caption).toBe("");
+    dictated[0]?.onFinal("I can hear you");
+    await flush();
+    expect(fake.send).toHaveBeenCalledWith(
+      "bot-1",
+      "I can hear you",
+      expect.stringMatching(/^call:/),
+    );
+  });
+
+  it("retries on-device dictation before giving up when the provider cannot transcribe", async () => {
+    const fake = fakes();
+    let attempts = 0;
+    const dictated: DictationHandlers[] = [];
+    startCall(
+      { botId: "bot-1", botName: "Ada", transcribe: false },
+      {
+        ...fake.deps,
+        dictate: async (next) => {
+          attempts += 1;
+          if (attempts === 1) return false;
+          dictated.push(next);
+          return true;
+        },
+      },
+    );
+    await flush();
+
+    expect(attempts).toBe(2);
+    expect(fake.recordings).toHaveLength(0);
+    expect(getSnapshot()?.caption).toBe("");
+    dictated[0]?.onFinal("hello there");
+    await flush();
+    expect(fake.send).toHaveBeenCalledWith("bot-1", "hello there", expect.stringMatching(/^call:/));
+  });
+
   it("aborts the bot feed on hang up", async () => {
     const fake = fakes();
     startCall({ botId: "bot-1", botName: "Ada" }, fake.deps);
