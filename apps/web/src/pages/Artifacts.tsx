@@ -13,6 +13,9 @@ import {
   AlertDialogTitle,
   BotAvatar,
   Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   NativeSelect,
   NativeSelectOption,
   parseBotAvatar,
@@ -22,6 +25,7 @@ import {
   ChevronLeft,
   Download,
   Filter,
+  ImagePlus,
   LayoutGrid,
   List,
   Lock,
@@ -99,6 +103,11 @@ export function ArtifactsPage() {
   const [pendingDelete, setPendingDelete] = useState<ArtifactSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generatePrompt, setGeneratePrompt] = useState("");
+  const [generateBotId, setGenerateBotId] = useState("");
+  const [generateBusy, setGenerateBusy] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   useEffect(() => {
     void takeInitialBootstrap().then((bootstrap) => setBots(bootstrap.bots));
@@ -211,6 +220,24 @@ export function ArtifactsPage() {
     }
   }
 
+  async function runGenerate() {
+    setGenerateBusy(true);
+    setGenerateError(null);
+    try {
+      const artifact = await rpc.images.generate({
+        botId: generateBotId,
+        prompt: generatePrompt.trim(),
+      });
+      setItems((current) => [{ ...artifact, versionCount: 1 }, ...(current ?? [])]);
+      setGenerateOpen(false);
+      setGeneratePrompt("");
+    } catch (error) {
+      setGenerateError(errorText(error, t`Could not generate the image.`));
+    } finally {
+      setGenerateBusy(false);
+    }
+  }
+
   return (
     <div className="flex h-full min-w-0 flex-col bg-background text-foreground/90">
       <header className="app-drag border-b border-border px-4 py-4 md:px-6">
@@ -243,6 +270,18 @@ export function ArtifactsPage() {
             >
               <Filter size={14} strokeWidth={1.9} />
               <Trans>Filters</Trans>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setGenerateBotId(activeBotId ?? bots[0]?.id ?? "");
+                setGenerateError(null);
+                setGenerateOpen(true);
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <ImagePlus size={14} strokeWidth={1.9} />
+              <Trans>Generate image</Trans>
             </button>
             {!artifactId ? (
               <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
@@ -343,6 +382,56 @@ export function ArtifactsPage() {
         )}
       </div>
 
+      {generateOpen ? (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open && !generateBusy) setGenerateOpen(false);
+          }}
+        >
+          <DialogContent className="sm:max-w-[440px]">
+            <DialogTitle>
+              <Trans>Generate image</Trans>
+            </DialogTitle>
+            <textarea
+              value={generatePrompt}
+              onChange={(event) => setGeneratePrompt(event.target.value)}
+              rows={3}
+              placeholder={t`Describe the image to generate…`}
+              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-[13.5px] outline-none focus:border-ring"
+            />
+            <NativeSelect
+              aria-label={t`Save to bot`}
+              value={generateBotId}
+              onChange={(event) => setGenerateBotId(event.target.value)}
+            >
+              {bots.map((bot) => (
+                <NativeSelectOption key={bot.id} value={bot.id}>
+                  {bot.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            {generateError ? (
+              <p className="text-[13.5px] text-destructive">{generateError}</p>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                disabled={generateBusy}
+                onClick={() => setGenerateOpen(false)}
+              >
+                <Trans>Cancel</Trans>
+              </Button>
+              <Button
+                disabled={generateBusy || !generatePrompt.trim() || !generateBotId}
+                onClick={() => void runGenerate()}
+              >
+                {generateBusy ? <Trans>Generating…</Trans> : <Trans>Generate</Trans>}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
       {pendingDelete ? (
         <AlertDialog
           open

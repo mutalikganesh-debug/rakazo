@@ -864,6 +864,23 @@ export const appContract = {
     getById: oc.input(z.object({ artifactId: Id })).output(ArtifactWithContentSchema),
     remove: oc.input(z.object({ artifactId: Id })).output(z.object({ ok: z.literal(true) })),
   },
+  images: {
+    /** Text-to-image through the deployment's image API; the result is stored as a regular artifact. */
+    generate: oc
+      .input(
+        threadTarget.and(
+          z.object({
+            prompt: z.string().trim().min(1).max(1500),
+            model: z.string().trim().min(1).max(80).optional(),
+            size: z
+              .string()
+              .regex(/^\d{2,4}x\d{2,4}$/)
+              .optional(),
+          }),
+        ),
+      )
+      .output(ArtifactSchema),
+  },
   usage: {
     list: oc.output(z.array(UsageRecordSchema)),
     summary: oc.output(
@@ -913,6 +930,7 @@ export const appContract = {
           apiKey: z.string().min(8),
           voiceId: z.string().max(120).optional(),
           speechModel: z.string().max(64).optional(),
+          baseUrl: z.string().max(512).optional(),
         }),
       )
       .output(VoiceCredentialSchema),
