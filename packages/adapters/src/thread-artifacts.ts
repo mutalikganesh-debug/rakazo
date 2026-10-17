@@ -183,3 +183,116 @@ export function currentTurnFilesInstruction(files: readonly MaterializedThreadFi
     ),
   ].join("\n");
 }
+
+export type ManifestDiagramEntry = {
+  file?: string;
+  title?: string;
+  anatomy_note?: string;
+  citation?: string;
+  match?: string[];
+};
+
+/** Pure concept matcher for a curated image manifest: entries whose `match` phrases
+ * (default: file stem with spaces) appear in the lowercased answer text, one per
+ * distinct file, capped at maxDiagrams. */
+export function manifestDiagramsForAnswer(
+  concepts: Record<string, ManifestDiagramEntry>,
+  answerText: string,
+  maxDiagrams = 3,
+): ManifestDiagramEntry[] {
+  const haystack = answerText.toLowerCase();
+  const picked: ManifestDiagramEntry[] = [];
+  const files = new Set<string>();
+  for (const entry of Object.values(concepts)) {
+    if (picked.length >= maxDiagrams) break;
+    const file = typeof entry?.file === "string" ? entry.file : "";
+    if (!file || files.has(file)) continue;
+    const stem = (file.split("/").pop() ?? "").replace(/\.[^.]+$/, "").replace(/_/g, " ");
+    const phrases = (entry.match?.length ? entry.match : [stem])
+      .map((phrase) => phrase.toLowerCase().trim())
+      .filter(Boolean);
+    if (!phrases.some((phrase) => haystack.includes(phrase))) continue;
+    files.add(file);
+    picked.push(entry);
+  }
+  return picked;
+}
+
+/** Deterministic curated-diagram attach: when the bot workspace carries
+ * anatomy/MANIFEST.json and the final answer covers a curated concept, attach the
+ * matching diagram even if the model never called attach_file (it sometimes claims
+ * the tool or the files are missing when they are not). Images the model already
+ * attached this run (identical bytes) are skipped via sha256. */
+export async function autoAttachManifestDiagrams(
+  deps: {
+    prisma: PrismaClient;
+    artifacts: ArtifactStore;
+    sandbox: SandboxProvider;
+  },
+  input: {
+    computer: ComputerRef;
+    context: AdapterContext;
+    computerMode: ComputerMode;
+    botId: string;
+    spaceId: string;
+    userId: string;
+    runId: string;
+    groupId?: string;
+    answerText: string;
+    maxDiagrams?: number;
+  },
+): Promise<MessageBlock[]> {
+  const readWorkspaceFile = (relativePath: string) =>
+    deps.sandbox.readFile(
+      input.computer,
+      resolveBotWorkspacePath(input.computerMode, input.botId, relativePath),
+      input.context,
+      { maxBytes: ATTACHMENT_MAX_BYTES },
+    );
+  let manifestRaw: Uint8Array;
+  try {
+    manifestRaw = await readWorkspaceFile("anatomy/MANIFEST.json");
+  } catch {
+    return [];
+  }
+  let concepts: Record<string, ManifestDiagramEntry> = {};
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(manifestRaw)) as {
+      concepts?: Record<string, ManifestDiagramEntry>;
+    };
+    concepts = parsed.concepts ?? {};
+  } catch {
+    return [];
+  }
+  const blocks: MessageBlock[] = [];
+  for (const entry of manifestDiagramsForAnswer(concepts, input.answerText, input.maxDiagrams)) {
+    try {
+      const file = entry.file as string;
+      const bytes = await readWorkspaceFile(file);
+      const hash = createHash("sha256").update(bytes).digest("hex");
+      const already = await deps.prisma.artifact.findFirst({
+        where: { runId: input.runId, hash },
+        select: { id: true },
+      });
+      if (already) continue;
+      const attached = await attachWorkspaceFileToThread(deps, {
+        spaceId: input.spaceId,
+        userId: input.userId,
+        botId: input.botId,
+        groupId: input.groupId,
+        runId: input.runId,
+        filePath: file,
+        bytes,
+        operationId: `${input.runId}:auto-diagram`,
+        name: typeof entry.title === "string" ? entry.title : undefined,
+        description: typeof entry.anatomy_note === "string" ? entry.anatomy_note : undefined,
+      });
+      blocks.push(attached.block);
+      if (entry.citation) blocks.push({ kind: "text", text: entry.citation });
+    } catch {
+      // One unreadable/unattachable diagram never breaks the reply.
+      continue;
+    }
+  }
+  return blocks;
+}

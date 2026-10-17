@@ -359,6 +359,7 @@ import {
 import { TASK_CATALOG_GUIDANCE, taskCatalogFromTool } from "./task-catalog.js";
 import { getActiveTeachingSession, parsePlaybook } from "./teaching-session.js";
 import {
+  autoAttachManifestDiagrams,
   attachWorkspaceFileToThread,
   currentTurnFilesInstruction,
   materializeCurrentTurnFiles,
@@ -7164,6 +7165,31 @@ export function createRunExecutor(deps: ExecutorDeps) {
             throw new Error(TOOL_STEPS_WITHOUT_RESPONSE);
           }
           if (!(await renewRunLease(deps, runId, workerId, fence))) return;
+          // Deterministic curated-diagram attach (anatomy/MANIFEST.json in the bot
+          // workspace): attach the matching curated diagram to the final answer even
+          // when the model never called attach_file. Never fatal to the reply.
+          if (!handedOff && deps.artifacts && blocks.length > 0) {
+            const diagramBlocks = await autoAttachManifestDiagrams(
+              { prisma: deps.prisma, artifacts: deps.artifacts, sandbox: deps.sandbox },
+              {
+                computer,
+                context,
+                computerMode,
+                botId: bot.id,
+                spaceId: run.spaceId,
+                userId: run.userId,
+                runId,
+                groupId: thread.groupId ?? undefined,
+                answerText: silentReply.assembled || text,
+              },
+            ).catch((error: unknown) => {
+              getLogger().warn(
+                `auto diagram attach failed for bot ${bot.id}: ${error instanceof Error ? error.message : String(error)}`,
+              );
+              return [];
+            });
+            blocks.push(...diagramBlocks);
+          }
           const botMessageOutcome =
             run.trigger === "bot_message"
               ? botMessageOutcomeFromMidTurn(text, midTurnUserTexts)
