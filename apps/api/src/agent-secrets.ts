@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import type { SecretStore } from "@rakazo/adapter-kit";
 import { persistPreparedSecret } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
+import { registerKnownSecrets } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma, withTransactionRetry } from "@rakazo/db";
 
@@ -45,6 +46,8 @@ export async function putAgentSecret(
   signal = new AbortController().signal,
 ) {
   await requireSpaceOwner(deps.prisma, actor);
+  // Reply leak-guard: a vault value must never echo back into a bot reply.
+  registerKnownSecrets([{ name: input.name, value: input.value }]);
   const row = await withTransactionRetry(async () => {
     const stored = await deps.secrets.put(input.value, {
       operationId: `agent-secret:${input.name}`,

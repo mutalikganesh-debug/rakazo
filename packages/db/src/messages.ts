@@ -1,4 +1,6 @@
 import type { MessageBlock } from "@rakazo/contracts";
+import { knownSecrets } from "@rakazo/core";
+import { redactLeaksDeep } from "@rakazo/logging";
 import type { Prisma, PrismaClient } from "./client.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
@@ -42,6 +44,17 @@ export function loadRunHistoryMessages(
   });
 }
 
+/**
+ * Reply leak-guard: scrub registered secret values and key-shaped patterns from
+ * bot reply content at the single message-create chokepoint, so no caller can echo
+ * a secret into chat by forgetting to redact before it is stored or sent.
+ * ponytail: exact-value masking covers only values registered before this write;
+ * reply text split across streamed event deltas can evade it - patterns still hold.
+ */
+export function redactBotReply<T>(value: T): T {
+  return redactLeaksDeep(value, knownSecrets()) as T;
+}
+
 export interface CreateThreadMessageInput {
   threadId: string;
   role: "user" | "bot" | "system";
@@ -77,12 +90,13 @@ export async function createThreadMessageInTransaction(
     select: { nextMessageSeq: true },
   });
   await assertRunCanWriteHistory(tx, input.runId, { allowCancelled: input.allowCancelledRun });
+  const blocks = input.role === "bot" ? redactBotReply(input.blocks) : input.blocks;
   return tx.message.create({
     data: {
       threadId: input.threadId,
       seq: thread.nextMessageSeq - 1,
       role: input.role,
-      blocks: input.blocks as Prisma.InputJsonValue,
+      blocks: blocks as Prisma.InputJsonValue,
       botId: input.botId,
       replyToMessageId: input.replyToMessageId,
       replyQuote: input.replyQuote,

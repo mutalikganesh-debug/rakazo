@@ -1,5 +1,6 @@
 import type { MessageBlock, ThreadMessage } from "@rakazo/contracts";
 import { cloudAgentBlockFromPayload } from "./cloud-agent.js";
+import { registerKnownSecrets } from "./known-secrets.js";
 
 export function projectMessages(
   events: Array<{
@@ -377,6 +378,9 @@ export function subagentBlockFromPayload(
 }
 
 export function redactSecrets(value: string, secrets: string[]): string {
+  // Reply leak-guard: every redaction pass teaches the registry which values are
+  // secret, so the shared message/event chokepoints can mask them in bot replies.
+  registerKnownSecrets(secrets);
   return secrets.reduce((acc, secret) => {
     if (!secret) return acc;
     return acc.split(secret).join("[redacted]");

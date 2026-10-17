@@ -99,3 +99,18 @@ export function redactLeaks(text: string, named: readonly NamedSecret[] = []): s
     .replace(SECRET_ASSIGNMENT, (_match, key: string) => `${key}=[REDACTED:${key.toLowerCase()}]`)
     .replace(BARE_SECRET, "[REDACTED:api-key]");
 }
+
+/**
+ * Deep variant for stored/sent content (message blocks, event payloads): scrubs
+ * every string inside a JSON-ish value, leaving non-strings untouched.
+ */
+export function redactLeaksDeep(value: unknown, named: readonly NamedSecret[] = []): unknown {
+  if (typeof value === "string") return redactLeaks(value, named);
+  if (Array.isArray(value)) return value.map((item) => redactLeaksDeep(item, named));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, redactLeaksDeep(nested, named)]),
+    );
+  }
+  return value;
+}
