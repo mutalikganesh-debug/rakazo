@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
+const REVEAL_CLEAR_MS = 30_000;
+
 /** Vault: space secrets, encrypted at rest, masked to model providers, audited on reveal. */
 export function SecretsSettingsPanel() {
   const { t } = useLingui();
@@ -27,6 +29,15 @@ export function SecretsSettingsPanel() {
     void reload();
   }, [reload]);
 
+  // Plaintext lives in React state only briefly: clear every revealed value shortly
+  // after the last reveal (component unmount discards the state outright).
+  // ponytail: one shared clock restarted by each reveal — per-secret timers if UX cares
+  useEffect(() => {
+    if (Object.keys(revealed).length === 0) return;
+    const timer = setTimeout(() => setRevealed({}), REVEAL_CLEAR_MS);
+    return () => clearTimeout(timer);
+  }, [revealed]);
+
   async function act(action: () => Promise<unknown>) {
     setBusy(true);
     setError(null);
@@ -43,7 +54,7 @@ export function SecretsSettingsPanel() {
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">
-        {t`Secrets are encrypted at rest, available to agent shells as environment variables, and never sent to model providers. Every reveal is recorded.`}
+        {t`Secrets are encrypted at rest, available to agent shells as environment variables, and scrubbed from text sent to model providers (known values and common key patterns). Every reveal is recorded.`}
       </p>
       <div className="space-y-2">
         {secrets.length === 0 ? (
@@ -59,12 +70,22 @@ export function SecretsSettingsPanel() {
                 variant="secondary"
                 size="sm"
                 disabled={busy}
-                onClick={() =>
+                onClick={() => {
+                  if (revealed[secret.id] !== undefined) {
+                    // Hide is a local clear — re-fetching would re-decrypt, write a
+                    // second reveal audit row, and leave the plaintext in state.
+                    setRevealed((current) => {
+                      const next = { ...current };
+                      delete next[secret.id];
+                      return next;
+                    });
+                    return;
+                  }
                   void act(async () => {
                     const result = await rpc.agentSecrets.reveal({ id: secret.id });
                     setRevealed((current) => ({ ...current, [secret.id]: result.value }));
-                  })
-                }
+                  });
+                }}
               >
                 {revealed[secret.id] !== undefined ? t`Hide` : t`Reveal`}
               </Button>

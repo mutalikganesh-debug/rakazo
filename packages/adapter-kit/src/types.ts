@@ -457,6 +457,8 @@ export interface AgentRunRequest {
   /**
    * Leak-guard: live named secret values masked as [REDACTED:name] in anything sent to the
    * model provider. Resolved per model request so values discovered mid-run are covered.
+   * Callers that derive requests (sub-runs, judges) must pass the parent closure through;
+   * leaving it out degrades that run to pattern-only scrubbing.
    */
   outboundSecrets?: () => Array<{ name: string; value: string }>;
   instructions: string;

@@ -6553,11 +6553,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 });
               },
               prompt,
-              // Leak-guard: named vault values plus every known run secret, resolved live
-              // so secrets learned mid-run are masked before they reach a provider.
+              // Leak-guard: named vault values (`agentEnvironment` is exactly the decrypted
+              // AgentSecret rows — see decryptAgentEnvironment above) plus every known run
+              // secret under a distinct placeholder name, resolved live so secrets learned
+              // mid-run are masked before they reach a provider.
               outboundSecrets: () => [
                 ...Object.entries(agentEnvironment).map(([name, value]) => ({ name, value })),
-                ...runSecrets.map((value) => ({ name: "secret", value })),
+                ...runSecrets.map((value, index) => ({ name: `run-secret-${index + 1}`, value })),
               ],
               contextStrategy,
               instructions: userTurnInstructions({
