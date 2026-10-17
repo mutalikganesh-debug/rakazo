@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import type { JobPublisher, SandboxProvider } from "@rakazo/adapter-kit";
+import type { ArtifactStore, JobPublisher, SandboxProvider } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import { cancelComputerRunWork, screenLeaseIdForRun, toComputerRef } from "@rakazo/adapters";
 import type {
@@ -39,6 +39,7 @@ import { getLogger } from "@rakazo/logging";
 import {
   buildSendPrompt,
   buildUserMessageBlocks,
+  loadExtractedAttachmentTexts,
   resolveGroupSendAttachments,
   resolveSendAttachments,
 } from "./artifacts.js";
@@ -614,6 +615,7 @@ export async function sendThreadMessage(
     prisma: PrismaClient;
     events: ThreadEvents;
     jobs: JobPublisher;
+    artifacts: ArtifactStore;
   },
   actor: Actor,
   target: ThreadTarget,
@@ -641,6 +643,18 @@ export async function sendThreadMessage(
   if (requestedReplyQuote && !input.replyToMessageId) {
     throw new ORPCError("BAD_REQUEST", { message: "replyQuote requires replyToMessageId." });
   }
+
+  // Extracted PDF/DOCX text up front, outside the send transaction: the brain
+  // cannot read binary attachments, so their text is inlined into the message.
+  const extractedTexts = await loadExtractedAttachmentTexts(
+    { prisma: deps.prisma, artifacts: deps.artifacts },
+    actor,
+    input.artifactIds,
+  );
+  const sectionsFor = (attachments: Array<{ id: string }>) =>
+    attachments
+      .map((attachment) => extractedTexts.get(attachment.id))
+      .filter((section): section is string => Boolean(section));
 
   const commit = () =>
     deps.prisma.$transaction(async (tx) => {
@@ -703,7 +717,7 @@ export async function sendThreadMessage(
           actor,
           mentionTargets.connectorMentionIds,
         );
-        const blocks = buildUserMessageBlocks(input.text, attachmentBlocks);
+        const blocks = buildUserMessageBlocks(input.text, attachmentBlocks, sectionsFor(artifacts));
         const message = await createThreadMessageInTransaction(tx, {
           threadId: target.threadId,
           role: "user",
@@ -809,7 +823,7 @@ export async function sendThreadMessage(
             botId: target.botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(input.text, artifacts, connectorNames, sectionsFor(artifacts)),
             status: "queued",
           },
         });
@@ -872,7 +886,7 @@ export async function sendThreadMessage(
         actor,
         mentionTargets.connectorMentionIds,
       );
-      const blocks = buildUserMessageBlocks(input.text, attachmentBlocks);
+      const blocks = buildUserMessageBlocks(input.text, attachmentBlocks, sectionsFor(artifacts));
       const message = await createThreadMessageInTransaction(tx, {
         threadId: target.threadId,
         role: "user",
@@ -957,7 +971,7 @@ export async function sendThreadMessage(
             botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(input.text, artifacts, connectorNames, sectionsFor(artifacts)),
             status: "queued",
           },
         });

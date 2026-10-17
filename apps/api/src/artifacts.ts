@@ -12,6 +12,12 @@ import {
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { IsolationError, Prisma, withResolvedArtifactVersion } from "@rakazo/db";
+import {
+  extractDocumentText,
+  extractedTextSection,
+  extractionFailureNote,
+  isExtractableDocument,
+} from "./document-text.js";
 
 function adapterContext(actor: Actor, botId: string, operationId: string) {
   return {
@@ -597,11 +603,17 @@ export async function resolveGroupSendAttachments(
 export function buildUserMessageBlocks(
   text: string | undefined,
   attachmentBlocks: ReturnType<typeof messageBlockForArtifact>[],
+  extractedSections: string[] = [],
 ) {
   const blocks = [];
   const caption = text?.trim();
   if (caption) blocks.push({ kind: "text" as const, text: caption });
   blocks.push(...attachmentBlocks);
+  // Extracted document text rides along as message text so the brain sees it
+  // now and in every later turn of the thread history.
+  for (const section of extractedSections) {
+    blocks.push({ kind: "text" as const, text: section });
+  }
   return blocks;
 }
 
@@ -609,8 +621,11 @@ export function buildSendPrompt(
   text: string | undefined,
   artifacts: Array<{ name: string; mimeType: string; size: number }>,
   connectorNames: string[] = [],
+  extractedSections: string[] = [],
 ) {
-  const prompt = promptTextForAttachments(text, artifacts);
+  const prompt = [promptTextForAttachments(text, artifacts), ...extractedSections]
+    .filter(Boolean)
+    .join("\n\n");
   if (connectorNames.length === 0) return prompt;
   const marker = "Use these connectors if relevant:";
   const existing = new RegExp(`^${marker} (.*)\\.$`, "m").exec(prompt);
@@ -626,4 +641,39 @@ export function buildSendPrompt(
   const line = `${marker} ${names.join(", ")}.`;
   if (existing) return prompt.replace(existing[0], () => line);
   return prompt ? `${prompt}\n\n${line}` : line;
+}
+
+/**
+ * Extracted text for PDF/DOCX send attachments, keyed by artifact id. Runs
+ * before the send transaction so storage I/O and document parsing never hold a
+ * database transaction open; the caller inlines the sections into the message
+ * blocks and the run prompt the brain reads.
+ */
+export async function loadExtractedAttachmentTexts(
+  deps: { prisma: Pick<PrismaClient, "artifact">; artifacts: ArtifactStore },
+  actor: Actor,
+  artifactIds: string[] | undefined,
+): Promise<Map<string, string>> {
+  const sections = new Map<string, string>();
+  if (!artifactIds?.length) return sections;
+  const ids = normalizeAttachmentIds(artifactIds);
+  const rows = await deps.prisma.artifact.findMany({
+    where: { id: { in: ids }, spaceId: actor.spaceId, userId: actor.userId },
+    select: { id: true, name: true, mimeType: true, storageKey: true, botId: true, groupId: true },
+  });
+  for (const row of rows) {
+    if (!isExtractableDocument(row.mimeType)) continue;
+    let text: string;
+    try {
+      const bytes = await deps.artifacts.get(
+        row.storageKey,
+        adapterContext(actor, row.botId ?? row.groupId ?? row.id, `artifact-extract:${row.id}`),
+      );
+      text = await extractDocumentText(row.mimeType, bytes);
+    } catch (error) {
+      text = extractionFailureNote(error);
+    }
+    sections.set(row.id, extractedTextSection(row.name, text));
+  }
+  return sections;
 }
