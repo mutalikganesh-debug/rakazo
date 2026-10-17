@@ -240,6 +240,7 @@ import {
   resolveBusyBotName,
   toComputerStatus,
 } from "./computer-status.js";
+import { generateImage, ImageGenerationError, imageNameForPrompt } from "./images.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   dismissMcpServerApprovals,
@@ -606,6 +607,7 @@ export interface RouterDeps {
     imageTag?: string;
     integrationsCatalogUrl?: string;
     mcpAllowPrivateEndpoint?: boolean;
+    xkiroApiKey?: string;
   };
 }
 
@@ -5897,6 +5899,46 @@ export function createRouter(deps: RouterDeps) {
       }),
       remove: authed.artifacts.remove.handler(async ({ context, input }) => {
         return deleteArtifactFamily(deps, context.actor, { familyId: input.artifactId });
+      }),
+    },
+    images: {
+      generate: authed.images.generate.handler(async ({ context, input }) => {
+        const botId = input.botId
+          ? (await repos.getBot(context.actor, input.botId)).id
+          : (await groupRepos.getGroupTarget(context.actor, input.groupId!)).members[0]?.bot.id;
+        if (!botId) throw new IsolationError();
+        const apiKey = deps.env.xkiroApiKey;
+        if (!apiKey) {
+          throw new ORPCError("PRECONDITION_FAILED", {
+            message: "Image generation is not configured on this deployment (XKIRO_API_KEY).",
+          });
+        }
+        let bytes: Uint8Array;
+        try {
+          bytes = await generateImage(
+            { prompt: input.prompt, model: input.model, size: input.size },
+            { apiKey },
+          );
+        } catch (error) {
+          if (error instanceof ImageGenerationError) {
+            throw new ORPCError("BAD_GATEWAY", { message: error.message });
+          }
+          throw error;
+        }
+        try {
+          return await createOwnedArtifact(deps, context.actor, {
+            botId,
+            groupId: input.groupId,
+            name: imageNameForPrompt(input.prompt),
+            mimeType: "image/png",
+            contentBase64: Buffer.from(bytes).toString("base64"),
+          });
+        } catch (error) {
+          if (error instanceof AttachmentValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
       }),
     },
     usage: {
