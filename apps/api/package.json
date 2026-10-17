@@ -21,7 +21,9 @@
     "@rakazo/db": "workspace:*",
     "@rakazo/logging": "workspace:*",
     "@rakazo/memory": "workspace:*",
-    "hono": "4.13.13"
+    "hono": "4.13.13",
+    "mammoth": "1.13.0",
+    "pdf-parse": "2.4.5"
   },
   "devDependencies": {
     "typescript": "7.0.2",

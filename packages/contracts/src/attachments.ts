@@ -12,8 +12,12 @@ export const ATTACHMENT_IMAGE_MIME_TYPES = [
   "image/gif",
 ] as const;
 
+export const DOCX_MIME_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
 export const ATTACHMENT_FILE_MIME_TYPES = [
   "application/pdf",
+  DOCX_MIME_TYPE,
   "text/plain",
   "text/markdown",
   "text/csv",
