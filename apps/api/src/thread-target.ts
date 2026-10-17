@@ -649,6 +649,9 @@ export async function sendThreadMessage(
   const extractedTexts = await loadExtractedAttachmentTexts(
     { prisma: deps.prisma, artifacts: deps.artifacts },
     actor,
+    target.kind === "bot"
+      ? { kind: "bot", botId: target.botId }
+      : { kind: "group", groupId: target.groupId, memberBotIds: target.memberBotIds },
     input.artifactIds,
   );
   const sectionsFor = (attachments: Array<{ id: string }>) =>
