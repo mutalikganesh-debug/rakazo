@@ -25,7 +25,7 @@ describe("agent secrets", () => {
         },
       ]),
       findUnique: vi.fn(async () => null),
-      findFirst: vi.fn(async () => ({ id: "as-1", secretId: "secret-1" })),
+      findFirst: vi.fn(async () => ({ id: "as-1", secretId: "secret-1", name: "ACME_TOKEN" })),
       upsert: vi.fn(async () => ({
         id: "as-1",
         name: "ACME_TOKEN",
@@ -37,6 +37,9 @@ describe("agent secrets", () => {
     secret: {
       create: vi.fn(async () => undefined),
       deleteMany: vi.fn(async () => ({ count: 1 })),
+    },
+    secretAudit: {
+      create: vi.fn(async () => undefined),
     },
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
   };

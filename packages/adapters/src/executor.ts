@@ -6553,6 +6553,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 });
               },
               prompt,
+              // Leak-guard: named vault values plus every known run secret, resolved live
+              // so secrets learned mid-run are masked before they reach a provider.
+              outboundSecrets: () => [
+                ...Object.entries(agentEnvironment).map(([name, value]) => ({ name, value })),
+                ...runSecrets.map((value) => ({ name: "secret", value })),
+              ],
               contextStrategy,
               instructions: userTurnInstructions({
                 botInstructions: runIdentityInstruction(bot, run.trigger),

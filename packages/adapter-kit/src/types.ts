@@ -454,6 +454,11 @@ export interface AgentRunRequest {
   runId: string;
   sourceMessageId?: string | null;
   prompt: string;
+  /**
+   * Leak-guard: live named secret values masked as [REDACTED:name] in anything sent to the
+   * model provider. Resolved per model request so values discovered mid-run are covered.
+   */
+  outboundSecrets?: () => Array<{ name: string; value: string }>;
   instructions: string;
   history: Array<{
     id?: string;

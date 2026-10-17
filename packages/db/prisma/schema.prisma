@@ -1148,6 +1148,19 @@ model Secret {
   @@map("secrets")
 }
 
+/// Append-only vault audit trail: who touched which secret, when. Values are never stored here.
+model SecretAudit {
+  id        String   @id @default(cuid())
+  spaceId   String
+  userId    String
+  name      String
+  action    String
+  createdAt DateTime @default(now())
+
+  @@index([spaceId, createdAt])
+  @@map("secret_audits")
+}
+
 model McpServer {
   id            String            @id @default(cuid())
   spaceId       String

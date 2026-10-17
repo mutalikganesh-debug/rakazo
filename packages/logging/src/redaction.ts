@@ -72,3 +72,30 @@ function shouldRedactKey(key: string): boolean {
   const normalized = key.toLowerCase().replace(/[^a-z0-9_]/g, "");
   return REDACT_KEYS.has(normalized) || SECRET_KEY.test(normalized);
 }
+
+/** A known secret value with its stable vault name, for [REDACTED:name] masks. */
+export type NamedSecret = { name: string; value: string };
+
+// Short values would mask ordinary prose; real credentials are far longer.
+const NAMED_MIN_LENGTH = 4;
+
+/**
+ * Leak-guard for outbound content (model providers, tool payloads): known secret values
+ * become [REDACTED:name], common key material becomes [REDACTED:bearer] / [REDACTED:api-key] /
+ * [REDACTED:<field>]. Named values run first so a vault value keeps its stable name even when
+ * the value itself looks like a key.
+ */
+export function redactLeaks(text: string, named: readonly NamedSecret[] = []): string {
+  let out = text;
+  const values = named
+    .filter((secret) => secret.value.length >= NAMED_MIN_LENGTH)
+    .sort((a, b) => b.value.length - a.value.length);
+  for (const secret of values) {
+    out = out.split(secret.value).join(`[REDACTED:${secret.name}]`);
+  }
+  return out
+    .replace(JSON_SECRET_FIELD, (_match, key: string) => `"${key}":"[REDACTED:${key}]"`)
+    .replace(BEARER, "Bearer [REDACTED:bearer]")
+    .replace(SECRET_ASSIGNMENT, (_match, key: string) => `${key}=[REDACTED:${key.toLowerCase()}]`)
+    .replace(BARE_SECRET, "[REDACTED:api-key]");
+}
