@@ -117,6 +117,7 @@ import {
   SquareKanban,
   TextQuote,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 import type { ClipboardEvent, DragEvent, MutableRefObject, RefObject } from "react";
@@ -3575,6 +3576,14 @@ export function ShellPage() {
               >
                 <FolderOpen className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Artifacts</Trans>
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start font-normal"
+                onClick={() => navigate("/app/deliberation")}
+              >
+                <Users className="text-muted-foreground" strokeWidth={1.75} />
+                <Trans>Deliberation</Trans>
               </Button>
               <Button
                 variant="ghost"

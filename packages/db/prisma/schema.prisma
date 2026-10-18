@@ -47,6 +47,8 @@ model User {
   agentSecrets               AgentSecret[]
   createdTickets              Ticket[]                     @relation("TicketCreatorUser")
   ticketComments              TicketComment[]              @relation("TicketCommentAuthorUser")
+  agentProfiles               AgentProfile[]
+  deliberationRooms           DeliberationRoom[]
 
   @@unique([email])
   @@map("user")
@@ -213,6 +215,8 @@ model Space {
   threads                     Thread[]
   events                      Event[]
   tasks                       Task[]
+  agentProfiles          AgentProfile[]
+  deliberationRooms      DeliberationRoom[]
   runs                        Run[]
   routines                    Routine[]
   scratchpadItems             ScratchpadItem[]
@@ -1498,4 +1502,63 @@ model TicketComment {
 
   @@index([ticketId, createdAt])
   @@map("ticket_comments")
+}
+
+model AgentProfile {
+  id            String                @id @default(cuid())
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spaceId       String
+  space         Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  name          String
+  role          String
+  persona       String
+  modelProvider String?
+  modelId       String?
+  color         String                @default("#9B5CF6")
+  ordinal       Int                   @default(0)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  messages      DeliberationMessage[]
+
+  @@index([spaceId, userId, ordinal])
+  @@map("agent_profiles")
+}
+
+model DeliberationRoom {
+  id          String                @id @default(cuid())
+  spaceId     String
+  space       Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  question    String
+  status      String                @default("running")
+  jointAnswer String?
+  dissent     String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  messages    DeliberationMessage[]
+
+  @@index([spaceId, userId, updatedAt])
+  @@map("deliberation_rooms")
+}
+
+model DeliberationMessage {
+  id        String           @id @default(cuid())
+  roomId    String
+  room      DeliberationRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  seq       Int
+  kind      String
+  agentId   String?
+  agent     AgentProfile?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentName String
+  round     Int              @default(0)
+  content   String
+  meta      Json?
+  createdAt DateTime         @default(now())
+
+  @@unique([roomId, seq])
+  @@index([roomId, seq])
+  @@map("deliberation_messages")
 }

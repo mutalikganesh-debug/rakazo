@@ -240,6 +240,16 @@ import {
   resolveBusyBotName,
   toComputerStatus,
 } from "./computer-status.js";
+import {
+  getRoomDetail,
+  listAgents,
+  listRooms,
+  loadAgents,
+  runRoomDeliberation,
+  saveTurn,
+  truncate,
+  updateAgent,
+} from "./deliberation.js";
 import { generateImage, ImageGenerationError, imageNameForPrompt } from "./images.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
@@ -827,6 +837,67 @@ export function createRouter(deps: RouterDeps) {
     },
     health: os.health.handler(async () => ({ ok: true as const, version: "0.1.0" })),
     me: authed.me.handler(async ({ context }): Promise<Me> => meDto(deps, context.actor)),
+    deliberation: {
+      agents: {
+        list: authed.deliberation.agents.list.handler(async ({ context }) =>
+          listAgents(deps.prisma, context.actor),
+        ),
+        update: authed.deliberation.agents.update.handler(async ({ context, input }) => {
+          try {
+            return await updateAgent(deps.prisma, context.actor, input);
+          } catch (error) {
+            throw new ORPCError("BAD_REQUEST", {
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }),
+      },
+      rooms: {
+        list: authed.deliberation.rooms.list.handler(async ({ context }) =>
+          listRooms(deps.prisma, context.actor),
+        ),
+        get: authed.deliberation.rooms.get.handler(async ({ context, input }) => {
+          try {
+            return await getRoomDetail(deps.prisma, context.actor, input.roomId);
+          } catch (error) {
+            throw new ORPCError("NOT_FOUND", {
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }),
+        create: authed.deliberation.rooms.create.handler(async ({ context, input }) => {
+          const agents = await loadAgents(deps.prisma, context.actor, input.agentIds);
+          const room = await deps.prisma.deliberationRoom.create({
+            data: {
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              title: input.title?.trim() || truncate(input.question, 60),
+              question: input.question,
+              status: "running",
+            },
+          });
+          await saveTurn(deps.prisma, room.id, {
+            seq: 0,
+            kind: "user",
+            agentId: null,
+            agentName: "You",
+            round: 0,
+            content: input.question,
+          });
+          // Bounded loop (finite rounds/tokens/timeouts) runs detached; the room
+          // page polls rooms.get and renders each turn as it lands.
+          void runRoomDeliberation(
+            deps.prisma,
+            deps.secrets,
+            context.actor,
+            room,
+            agents,
+            deps.env.defaultModel,
+          );
+          return getRoomDetail(deps.prisma, context.actor, room.id);
+        }),
+      },
+    },
     billing: {
       status: authed.billing.status.handler(async ({ context }) =>
         requireBilling(deps).status(context.actor),

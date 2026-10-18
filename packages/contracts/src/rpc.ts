@@ -23,6 +23,14 @@ import {
 } from "./board.js";
 import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot-secrets.js";
 import {
+  AgentProfileSchema,
+  CreateRoomInput,
+  DeliberationRoomDetailSchema,
+  DeliberationRoomSchema,
+  RoomIdInput,
+  UpdateAgentInput,
+} from "./deliberation.js";
+import {
   ActionApprovalRuleSchema,
   ActionAutoReviewSettingsSchema,
   AgentSecretInputSchema,
@@ -576,6 +584,17 @@ export const appContract = {
       )
       .output(ScratchpadItemSchema),
     remove: oc.input(z.object({ itemId: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  deliberation: {
+    agents: {
+      list: oc.output(z.array(AgentProfileSchema)),
+      update: oc.input(UpdateAgentInput).output(AgentProfileSchema),
+    },
+    rooms: {
+      list: oc.output(z.array(DeliberationRoomSchema)),
+      get: oc.input(RoomIdInput).output(DeliberationRoomDetailSchema),
+      create: oc.input(CreateRoomInput).output(DeliberationRoomDetailSchema),
+    },
   },
   boards: {
     list: oc.output(z.array(BoardSchema)),
