@@ -112,6 +112,7 @@ import {
   BlockGoalInput,
   CreateGoalInput,
   EditGoalInput,
+  EvidenceGoalInput,
   GoalCardSchema,
   GoalMutationInput,
 } from "./goals.js";
@@ -611,6 +612,7 @@ export const appContract = {
     resume: oc.input(GoalMutationInput).output(GoalCardSchema),
     block: oc.input(BlockGoalInput).output(GoalCardSchema),
     edit: oc.input(EditGoalInput).output(GoalCardSchema),
+    evidence: oc.input(EvidenceGoalInput).output(GoalCardSchema),
     clear: oc.input(GoalMutationInput).output(z.object({ ok: z.literal(true) })),
   },
   boards: {

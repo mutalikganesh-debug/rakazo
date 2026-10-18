@@ -254,6 +254,7 @@ import {
   cmdBlock,
   cmdClear,
   cmdEditObjective,
+  cmdEvidence,
   cmdPause,
   cmdResume,
   createGoal,
@@ -993,6 +994,16 @@ export function createRouter(deps: RouterDeps) {
             input.revision,
             input.objective,
           );
+          return await getGoalCard(deps.prisma, context.actor, input.goalId);
+        } catch (error) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+      evidence: authed.goals.evidence.handler(async ({ context, input }) => {
+        try {
+          await cmdEvidence(deps.prisma, context.actor, input.goalId, input.revision, input.ids);
           return await getGoalCard(deps.prisma, context.actor, input.goalId);
         } catch (error) {
           throw new ORPCError("BAD_REQUEST", {

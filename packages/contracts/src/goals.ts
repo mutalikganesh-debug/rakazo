@@ -61,3 +61,8 @@ export const BlockGoalInput = GoalMutationInput.extend({
 export const EditGoalInput = GoalMutationInput.extend({
   objective: z.string().trim().min(1).max(4000),
 });
+
+/** Fenced evidence recording: append worker evidence ids the evaluator may cite. */
+export const EvidenceGoalInput = GoalMutationInput.extend({
+  ids: z.array(z.string().trim().min(1).max(128)).min(1).max(64),
+});

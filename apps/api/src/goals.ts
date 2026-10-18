@@ -477,6 +477,48 @@ export function recordEvaluation(
 }
 
 /**
+ * Evidence-recording path (operator-approved extension 2026-10-18): the
+ * reference engine leaves state.evidence unwritable, so revalidateMet can never
+ * accept an evaluator-cited requirement. Workers record evidence ids here (via
+ * `EVIDENCE: <id>` turn lines or the goals.evidence RPC) and the evaluator may
+ * then cite ids from this set. Validation stays strict (unchanged).
+ */
+export function recordEvidence(state: GoalState, ids: string[]): GoalState {
+  const out: GoalState = { ...state };
+  const seen = new Set(state.evidence ?? []);
+  let changed = false;
+  for (const raw of ids) {
+    const id = String(raw ?? "")
+      .trim()
+      .slice(0, 128);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    changed = true;
+    if (seen.size >= 512) break; // ponytail: hard cap, raise if evidence sets ever outgrow it
+  }
+  if (changed) {
+    out.evidence = [...seen];
+    out.updatedAt = goalTs();
+  }
+  return out;
+}
+
+/** Parse `EVIDENCE: <id>` envelope lines from a continuation turn. */
+export function harvestEvidenceIds(text: string): string[] {
+  const ids: string[] = [];
+  for (const line of String(text ?? "").split("\n")) {
+    const match = /^\s*EVIDENCE:\s*(.+?)\s*$/i.exec(line);
+    if (!match) continue;
+    const id = String(match[1] ?? "")
+      .trim()
+      .slice(0, 128);
+    if (id) ids.push(id);
+    if (ids.length >= 64) break; // ponytail: per-turn cap, one turn should name a handful
+  }
+  return ids;
+}
+
+/**
  * Fold one work turn into the guard counters (S1.5). Error turns never run the
  * evaluator and never feed the stall counter. Aborts pause immediately.
  */
@@ -817,10 +859,11 @@ export function buildEvalPrompt(state: GoalState, transcript = ""): string | nul
     "Evaluate this goal. Reply with exactly one line " +
     "'VERDICT: met|continue|impossible - <reason>' followed by a JSON object " +
     "with keys verdict, reason, requirements (list of {id, met, failureMode, " +
-    "evidence, todos}), final_answer (optional).\n\n" +
+    "evidence (ONLY ids from the EVIDENCE list below), todos}), final_answer (optional).\n\n" +
     `OBJECTIVE:\n${objective}\n\n` +
     `TODOS:\n${JSON.stringify(state.todos ?? [], null, 0)}\n\n` +
     `LESSONS:\n${JSON.stringify([...(state.lessons ?? [])].sort())}\n\n` +
+    `EVIDENCE:\n${JSON.stringify(state.evidence ?? [])}\n\n` +
     "TRANSCRIPT:\n";
   const budget = EVAL_PROMPT_MAX_CHARS - head.length;
   if (budget < 0) return null;
@@ -1218,7 +1261,9 @@ export async function runGoalLoop(
           system:
             "You are the goal worker inside one user's personal-agent app. Advance the objective below " +
             "as far as you can right now. Be concrete and concise; state what you did and what remains. " +
-            "Plain text only.\n\nEnd your reply with EXACTLY ONE line in the form " +
+            "Plain text only.\n\nFor each verifiable artifact or check you complete, add its own line " +
+            "'EVIDENCE: <id>' (a short stable id such as a filename or hash) before the verdict line, " +
+            "so the evaluator can cite it.\n\nEnd your reply with EXACTLY ONE line in the form " +
             "'VERDICT: DONE - <summary>' when the objective's work is finished, or " +
             "'VERDICT: BLOCKED - <summary>' when you cannot proceed.",
           prompt,
@@ -1234,6 +1279,14 @@ export async function runGoalLoop(
       gateFailLoud(error, "loop:continuation", current);
       turnError = true;
       turnText = "";
+    }
+
+    // worker-reported evidence lands BEFORE the evaluator checkpoint so
+    // revalidateMet can accept evaluator-cited requirement evidence ids
+    const evidenceIds = turnError ? [] : harvestEvidenceIds(turnText);
+    if (evidenceIds.length) {
+      current = recordEvidence(current, evidenceIds);
+      await commit(current);
     }
 
     const result = await runGoalTurn(current, turnText, {
@@ -1514,6 +1567,18 @@ export async function cmdResume(
   const state = await fencedState(prisma, actor, goalId, revision);
   const next = goalResume(state, { expectedId: goalId, expectedRevision: revision });
   return commitUpdate(prisma, state, next);
+}
+
+/** Fenced evidence recording (goals.evidence RPC): worker/external evidence ids. */
+export async function cmdEvidence(
+  prisma: PrismaClient,
+  actor: ActorScope,
+  goalId: string,
+  revision: number,
+  ids: string[],
+): Promise<GoalState> {
+  const state = await fencedState(prisma, actor, goalId, revision);
+  return commitUpdate(prisma, state, recordEvidence(state, ids));
 }
 
 export async function cmdBlock(

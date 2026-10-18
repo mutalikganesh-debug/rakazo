@@ -14,9 +14,11 @@ import {
   gateVerdictLine,
   goalResume,
   goalTransition,
+  harvestEvidenceIds,
   memoryGoalStore,
   newGoalState,
   parseEvaluatorOutput,
+  recordEvidence,
   revalidateMet,
   runGoalLoop,
   runGoalTurn,
@@ -334,5 +336,126 @@ describe("run loop", () => {
     expect(edited.completionConfidence).toBeNull();
     const accounted = accountTokens(edited, 5);
     expect(accounted.tokensUsed).toBe(5);
+  });
+});
+
+describe("evidence recording path (met reachability)", () => {
+  it("harvestEvidenceIds parses envelope lines and ignores junk", () => {
+    const text = [
+      "did the work",
+      "EVIDENCE: /tmp/goal-e2e/x.txt",
+      "evidence: hash-5989ee6e",
+      "NOT EVIDENCE: nope",
+      "EVIDENCE:   ",
+      "VERDICT: DONE - done",
+    ].join("\n");
+    expect(harvestEvidenceIds(text)).toEqual(["/tmp/goal-e2e/x.txt", "hash-5989ee6e"]);
+  });
+
+  it("recordEvidence dedupes and no-ops on empty input", () => {
+    let state = newGoalState("goal_ev1", "objective", {});
+    state = recordEvidence(state, ["a", "a", " b ", ""]);
+    expect(state.evidence).toEqual(["a", "b"]);
+    const same = recordEvidence(state, ["a"]);
+    expect(same.evidence).toEqual(["a", "b"]);
+  });
+
+  it("met is reachable once evidence ids are recorded (revalidateMet accepts cited ids)", async () => {
+    let state = newGoalState("goal_ev2", "produce the contract sentence", { verifyCmd: "true" });
+    state = recordEvidence(state, ["artifact-x"]);
+    const complete = stubComplete(
+      () => ({ text: "sentence produced\nVERDICT: DONE - sentence produced" }),
+      () => ({
+        text:
+          "VERDICT: met - requirements satisfied\n" +
+          JSON.stringify({
+            verdict: "met",
+            reason: "requirements satisfied",
+            requirements: [
+              {
+                id: "contract-sentence",
+                met: true,
+                failureMode: "none",
+                evidence: ["artifact-x"],
+                todos: [],
+              },
+            ],
+          }),
+      }),
+    );
+    const result = await runGoalTurn(
+      state,
+      "sentence produced\nVERDICT: DONE - sentence produced",
+      {
+        deps: deps(complete),
+      },
+    );
+    expect(result.state.status).toBe("complete");
+    expect(result.verdictLine.startsWith("VERDICT: DONE - ")).toBe(true);
+  });
+
+  it("met is STILL demoted when the cited evidence id was never recorded (validation strict)", async () => {
+    const state = newGoalState("goal_ev4", "produce the contract sentence", { verifyCmd: "true" });
+    const complete = stubComplete(
+      () => ({ text: "work\nVERDICT: DONE - work" }),
+      () => ({
+        text:
+          "VERDICT: met - claims done\n" +
+          JSON.stringify({
+            verdict: "met",
+            reason: "claims done",
+            requirements: [
+              {
+                id: "contract-sentence",
+                met: true,
+                failureMode: "none",
+                evidence: ["ghost"],
+                todos: [],
+              },
+            ],
+          }),
+      }),
+    );
+    const result = await runGoalTurn(state, "work\nVERDICT: DONE - work", { deps: deps(complete) });
+    expect(result.state.status).toBe("active");
+    expect(result.evaluation?.verdict).toBe("continue");
+    expect(result.evaluation?.reason).toContain("Remaining requirement: contract-sentence");
+  });
+
+  it("loop harvests EVIDENCE lines before the evaluator checkpoint and completes", async () => {
+    const state = newGoalState("goal_ev3", "produce a sentence + artifact", { verifyCmd: "true" });
+    let sawPool = false;
+    const complete = stubComplete(
+      () => ({
+        text: "sentence produced.\nEVIDENCE: /tmp/goal-e2e/x.txt\nVERDICT: DONE - sentence produced",
+      }),
+      (prompt) => {
+        sawPool = prompt.includes('EVIDENCE:\n["/tmp/goal-e2e/x.txt"]');
+        return {
+          text:
+            "VERDICT: met - done\n" +
+            JSON.stringify({
+              verdict: "met",
+              reason: "done",
+              requirements: [
+                {
+                  id: "sentence",
+                  met: true,
+                  failureMode: "none",
+                  evidence: ["/tmp/goal-e2e/x.txt"],
+                  todos: [],
+                },
+              ],
+            }),
+        };
+      },
+    );
+    const store = memoryGoalStore();
+    await store.commit(null, state);
+    const result = await runGoalLoop(state, { deps: { complete, runVerify: okVerify, store } });
+    expect(sawPool).toBe(true);
+    expect(result.state.status).toBe("complete");
+    expect(result.state.evidence).toContain("/tmp/goal-e2e/x.txt");
+    expect(result.output.split("\n").filter((l) => l.startsWith("VERDICT:")).length).toBe(1);
   });
 });
