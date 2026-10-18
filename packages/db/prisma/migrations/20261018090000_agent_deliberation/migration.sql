@@ -64,13 +64,13 @@ CREATE UNIQUE INDEX "deliberation_messages_roomId_seq_key" ON "deliberation_mess
 ALTER TABLE "agent_profiles" ADD CONSTRAINT "agent_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "agent_profiles" ADD CONSTRAINT "agent_profiles_spaceId_fkey" FOREIGN KEY ("spaceId") REFERENCES "space"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "agent_profiles" ADD CONSTRAINT "agent_profiles_spaceId_fkey" FOREIGN KEY ("spaceId") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "deliberation_rooms" ADD CONSTRAINT "deliberation_rooms_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "deliberation_rooms" ADD CONSTRAINT "deliberation_rooms_spaceId_fkey" FOREIGN KEY ("spaceId") REFERENCES "space"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "deliberation_rooms" ADD CONSTRAINT "deliberation_rooms_spaceId_fkey" FOREIGN KEY ("spaceId") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "deliberation_messages" ADD CONSTRAINT "deliberation_messages_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "deliberation_rooms"("id") ON DELETE CASCADE ON UPDATE CASCADE;
