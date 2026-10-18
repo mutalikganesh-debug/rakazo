@@ -93,6 +93,7 @@ import {
   CircleAlert,
   Clock,
   Copy,
+  Flag,
   FolderOpen,
   Gauge,
   LayoutGrid,
@@ -3584,6 +3585,14 @@ export function ShellPage() {
               >
                 <Users className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Deliberation</Trans>
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start font-normal"
+                onClick={() => navigate("/app/goals")}
+              >
+                <Flag className="text-muted-foreground" strokeWidth={1.75} />
+                <Trans>Goals</Trans>
               </Button>
               <Button
                 variant="ghost"

@@ -250,6 +250,17 @@ import {
   truncate,
   updateAgent,
 } from "./deliberation.js";
+import {
+  cmdBlock,
+  cmdClear,
+  cmdEditObjective,
+  cmdPause,
+  cmdResume,
+  createGoal,
+  getGoalCard,
+  listGoalCards,
+  startGoalRun,
+} from "./goals.js";
 import { generateImage, ImageGenerationError, imageNameForPrompt } from "./images.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
@@ -897,6 +908,108 @@ export function createRouter(deps: RouterDeps) {
           return getRoomDetail(deps.prisma, context.actor, room.id);
         }),
       },
+    },
+    goals: {
+      list: authed.goals.list.handler(async ({ context }) =>
+        listGoalCards(deps.prisma, context.actor),
+      ),
+      get: authed.goals.get.handler(async ({ context, input }) => {
+        try {
+          return await getGoalCard(deps.prisma, context.actor, input.goalId);
+        } catch (error) {
+          throw new ORPCError("NOT_FOUND", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+      create: authed.goals.create.handler(async ({ context, input }) => {
+        try {
+          if (input.clientId) {
+            const existing = await deps.prisma.goalRun.findFirst({
+              where: { spaceId: context.actor.spaceId, clientId: input.clientId },
+            });
+            if (existing) return await getGoalCard(deps.prisma, context.actor, existing.goalId);
+          }
+          const goalId = `goal_${randomUUID()}`;
+          await createGoal(deps.prisma, context.actor, {
+            goalId,
+            objective: input.objective,
+            verifyCmd: input.verifyCmd ?? "",
+            tokenBudget: input.tokenBudget ?? null,
+            clientId: input.clientId ?? null,
+          });
+          // Bounded loop runs detached; the Goals card polls goals.list while it works.
+          startGoalRun(deps.prisma, deps.secrets, context.actor, goalId, deps.env.defaultModel);
+          return await getGoalCard(deps.prisma, context.actor, goalId);
+        } catch (error) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+      pause: authed.goals.pause.handler(async ({ context, input }) => {
+        try {
+          await cmdPause(deps.prisma, context.actor, input.goalId, input.revision);
+          return await getGoalCard(deps.prisma, context.actor, input.goalId);
+        } catch (error) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+      resume: authed.goals.resume.handler(async ({ context, input }) => {
+        try {
+          await cmdResume(deps.prisma, context.actor, input.goalId, input.revision);
+          startGoalRun(
+            deps.prisma,
+            deps.secrets,
+            context.actor,
+            input.goalId,
+            deps.env.defaultModel,
+          );
+          return await getGoalCard(deps.prisma, context.actor, input.goalId);
+        } catch (error) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+      block: authed.goals.block.handler(async ({ context, input }) => {
+        try {
+          await cmdBlock(deps.prisma, context.actor, input.goalId, input.revision, input.reason);
+          return await getGoalCard(deps.prisma, context.actor, input.goalId);
+        } catch (error) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+      edit: authed.goals.edit.handler(async ({ context, input }) => {
+        try {
+          await cmdEditObjective(
+            deps.prisma,
+            context.actor,
+            input.goalId,
+            input.revision,
+            input.objective,
+          );
+          return await getGoalCard(deps.prisma, context.actor, input.goalId);
+        } catch (error) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+      clear: authed.goals.clear.handler(async ({ context, input }) => {
+        try {
+          await cmdClear(deps.prisma, context.actor, input.goalId, input.revision);
+          return { ok: true as const };
+        } catch (error) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
     },
     billing: {
       status: authed.billing.status.handler(async ({ context }) =>

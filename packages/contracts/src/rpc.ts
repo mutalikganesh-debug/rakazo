@@ -108,6 +108,13 @@ import {
   VoiceStatusSchema,
 } from "./domain.js";
 import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
+import {
+  BlockGoalInput,
+  CreateGoalInput,
+  EditGoalInput,
+  GoalCardSchema,
+  GoalMutationInput,
+} from "./goals.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   IntegrationProviderConfigSchema,
@@ -595,6 +602,16 @@ export const appContract = {
       get: oc.input(RoomIdInput).output(DeliberationRoomDetailSchema),
       create: oc.input(CreateRoomInput).output(DeliberationRoomDetailSchema),
     },
+  },
+  goals: {
+    list: oc.output(z.array(GoalCardSchema)),
+    get: oc.input(z.object({ goalId: Id })).output(GoalCardSchema),
+    create: oc.input(CreateGoalInput).output(GoalCardSchema),
+    pause: oc.input(GoalMutationInput).output(GoalCardSchema),
+    resume: oc.input(GoalMutationInput).output(GoalCardSchema),
+    block: oc.input(BlockGoalInput).output(GoalCardSchema),
+    edit: oc.input(EditGoalInput).output(GoalCardSchema),
+    clear: oc.input(GoalMutationInput).output(z.object({ ok: z.literal(true) })),
   },
   boards: {
     list: oc.output(z.array(BoardSchema)),

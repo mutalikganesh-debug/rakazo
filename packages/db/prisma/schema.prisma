@@ -49,6 +49,7 @@ model User {
   ticketComments              TicketComment[]              @relation("TicketCommentAuthorUser")
   agentProfiles               AgentProfile[]
   deliberationRooms           DeliberationRoom[]
+  goalRuns                    GoalRun[]
 
   @@unique([email])
   @@map("user")
@@ -217,6 +218,7 @@ model Space {
   tasks                       Task[]
   agentProfiles          AgentProfile[]
   deliberationRooms      DeliberationRoom[]
+  goalRuns               GoalRun[]
   runs                        Run[]
   routines                    Routine[]
   scratchpadItems             ScratchpadItem[]
@@ -1561,4 +1563,51 @@ model DeliberationMessage {
   @@unique([roomId, seq])
   @@index([roomId, seq])
   @@map("deliberation_messages")
+}
+
+model GoalRun {
+  id                         String   @id @default(cuid())
+  goalId                     String   @unique
+  spaceId                    String
+  space                      Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId                     String
+  user                       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  botId                      String?
+  threadId                   String?
+  clientId                   String?
+  objective                  String
+  revision                   Int      @default(1)
+  status                     String
+  blockedReason              String?
+  completionConfidence       String?
+  lastEvaluation             Json?
+  consecutiveErrorTurns      Int      @default(0)
+  unchangedContinuationTurns Int      @default(0)
+  tokensUsed                 Int      @default(0)
+  tokenBudget                Int?
+  timeUsedMs                 Int      @default(0)
+  verifyCmd                  String   @default("")
+  evaluationCount            Int      @default(0)
+  error                      String?
+  verdictLine                String?
+  output                     String?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  @@unique([spaceId, clientId])
+  @@index([spaceId, userId, updatedAt])
+  @@map("goal_runs")
+}
+
+/// Append-only goal journal (put = full snapshot, clear = tombstone). Never pruned.
+model GoalJournal {
+  id        Int      @id @default(autoincrement())
+  goalId    String
+  revision  Int
+  op        String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([goalId, id])
+  @@map("goal_journal")
 }

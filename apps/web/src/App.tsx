@@ -54,6 +54,9 @@ const BoardPage = lazy(() =>
 const DeliberationPage = lazy(() =>
   import("./pages/Deliberation").then((module) => ({ default: module.DeliberationPage })),
 );
+const GoalsPage = lazy(() =>
+  import("./pages/Goals").then((module) => ({ default: module.GoalsPage })),
+);
 
 function SsoCallbackPage() {
   useEffect(() => {
@@ -182,6 +185,7 @@ function SessionApp() {
             <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage />} />
             <Route path="/app/deliberation" element={<DeliberationPage />} />
             <Route path="/app/deliberation/:roomId" element={<DeliberationPage />} />
+            <Route path="/app/goals" element={<GoalsPage />} />
             {ticketBoardEnabled ? <Route path="/app/board" element={<BoardPage />} /> : null}
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
