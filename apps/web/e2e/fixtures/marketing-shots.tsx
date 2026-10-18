@@ -309,14 +309,14 @@ function RosterRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-1.5">
             <span className="min-w-0 truncate text-[14px] font-medium text-foreground">{name}</span>
-            <span className="text-[11.5px] text-muted-foreground/60 tabular-nums">{time}</span>
+            <span className="text-[11.5px] text-muted-foreground tabular-nums">{time}</span>
           </div>
           <div className="mt-1 flex">
             <span className="max-w-full truncate rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
               {title}
             </span>
           </div>
-          <div className="mt-1 line-clamp-2 text-[12.5px] break-words whitespace-normal text-muted-foreground/60">
+          <div className="mt-1 line-clamp-2 text-[12.5px] break-words whitespace-normal text-muted-foreground">
             {preview}
           </div>
         </div>
