@@ -3,6 +3,7 @@ import { Badge, Button, Card, cn, Input, Spinner, Textarea } from "@rakazo/ui-we
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
+import { GoalGraph } from "./goal-graph";
 
 const POLL_MS = 2000;
 
@@ -99,6 +100,7 @@ function GoalCardView({
       </div>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{goal.objective}</p>
       <Progress goal={goal} />
+      <GoalGraph goal={goal} />
       {goal.verdictLine ? <p className="mt-2 text-xs font-medium">{goal.verdictLine}</p> : null}
       {goal.blockedReason ? (
         <p className="mt-1 text-xs text-muted-foreground">blocked: {goal.blockedReason}</p>
