@@ -509,3 +509,57 @@ describe("evidence recording path (met reachability)", () => {
     expect(result.evaluation?.reason).toContain("final answer match");
   });
 });
+
+describe("user fencing mid-run", () => {
+  it("survives a fenced user write: re-reads, keeps both evidence sets, still completes", async () => {
+    const store = memoryGoalStore();
+    const state = newGoalState("goal_fence1", "compute 2+2 and deliver the result", {
+      verifyCmd: "true",
+    });
+    await store.commit(null, state);
+    let calls = 0;
+    const complete: GoalCompleteFn = async ({ system }) => {
+      calls += 1;
+      if (!system.includes("goal evaluator")) {
+        // a user evidence add lands DURING the worker's model call and fences the run
+        const userState = await store.load("goal_fence1");
+        const bumped = recordEvidence(userState as GoalState, ["user-receipt-1"]);
+        await store.commit(userState, bumped);
+        return {
+          text: "did the math\nEVIDENCE: worker-check-1\nANSWER: 4\nVERDICT: DONE - computed 2+2=4",
+          tokens: 5,
+        };
+      }
+      return {
+        text:
+          "VERDICT: met - done\n" +
+          JSON.stringify({
+            verdict: "met",
+            reason: "done",
+            requirements: [
+              {
+                id: "answer",
+                met: true,
+                failureMode: "none",
+                evidence: ["worker-check-1", "user-receipt-1"],
+                todos: [],
+              },
+            ],
+            final_answer: "4",
+          }),
+        tokens: 3,
+      };
+    };
+    const result = await runGoalLoop(state, {
+      deps: { complete, runVerify: okVerify, store },
+    });
+    expect(result.state.status).toBe("complete");
+    expect(result.state.evidence).toContain("worker-check-1");
+    expect(result.state.evidence).toContain("user-receipt-1");
+    expect(result.state.proposedAnswer).toBe("4");
+    // the user's fenced write survived too: its journal put is in the replay
+    const replayed = await store.load("goal_fence1");
+    expect(replayed?.evidence).toContain("user-receipt-1");
+    expect(calls).toBeGreaterThanOrEqual(2);
+  });
+});

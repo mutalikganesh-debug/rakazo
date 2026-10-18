@@ -1266,6 +1266,23 @@ export async function runGoalLoop(
       await opts.deps.store.commit(lastCommitted, next);
       lastCommitted = next;
     } catch (error) {
+      if (error instanceof StaleGoalError) {
+        // A user command (evidence add, objective edit, pause) fenced us out
+        // mid-run: their state is authoritative — re-read and continue the
+        // bounded loop against it (the stale-error contract: "Read the current
+        // goal and continue against the latest"). The turn's own
+        // evidence/answer harvest is preserved on top of the re-read state.
+        const fresh = await opts.deps.store.load(next.id);
+        if (fresh) {
+          const merged = recordAnswer(
+            recordEvidence(fresh, next.evidence ?? []),
+            next.proposedAnswer,
+          );
+          Object.assign(next, merged);
+          Object.assign(lastCommitted, merged);
+        }
+        return;
+      }
       Object.assign(next, lastCommitted); // roll back in-memory state (S1.2)
       throw error instanceof GoalError
         ? error
