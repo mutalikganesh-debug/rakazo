@@ -3,6 +3,11 @@
   overflow-wrap: anywhere;
 }
 
+/* Reading measure for prose only; code blocks, tables, and images stay full width. */
+.rk-chat-markdown :is(p, ul, ol) {
+  max-width: 68ch;
+}
+
 .rk-chat-markdown > :first-child,
 .rk-chat-markdown > :first-child > :first-child {
   margin-top: 0;

@@ -112,7 +112,11 @@ export function BoardPage() {
         <h1 className="flex-1 font-medium">
           <Trans>Board</Trans>
         </h1>
-        <Button onClick={() => setSelected("new")} disabled={bots.length === 0}>
+        <Button
+          onClick={() => setSelected("new")}
+          disabled={bots.length === 0}
+          title={bots.length === 0 ? t`Create a bot first` : undefined}
+        >
           <Trans>New ticket</Trans>
         </Button>
       </header>
@@ -147,9 +151,19 @@ export function BoardPage() {
           ))}
         </div>
         {tickets.length === 0 && !error ? (
-          <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-            <Trans>No tickets yet</Trans>
-          </p>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                <Trans>No tickets yet</Trans>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <Trans>Tickets you create here can be assigned to any agent.</Trans>
+              </p>
+            </div>
+            <Button className="pointer-events-auto" onClick={() => setSelected("new")}>
+              <Trans>New ticket</Trans>
+            </Button>
+          </div>
         ) : null}
       </main>
       {selected ? (

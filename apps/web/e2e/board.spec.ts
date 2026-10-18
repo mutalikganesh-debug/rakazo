@@ -30,7 +30,8 @@ test("board creates a ticket and opens it", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await captureScreenshot(page, testInfo, "board-kanban");
 
-  await page.getByRole("button", { name: "New ticket", exact: true }).click();
+  // Scope to the header button: the empty state now also offers "New ticket".
+  await page.locator("header").getByRole("button", { name: "New ticket", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New ticket" });
   await dialog.getByLabel("Title").fill(title);
   await dialog.getByLabel("Description").fill(description);

@@ -2902,7 +2902,7 @@ export function ShellPage() {
               className={`app-no-drag flex h-7 w-7 items-center justify-center rounded-full ${
                 activityMode
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground/70 hover:text-foreground/75"
+                  : "text-muted-foreground hover:text-foreground/75"
               }`}
             >
               <Bell
@@ -2914,7 +2914,7 @@ export function ShellPage() {
             </button>
             <button
               type="button"
-              className="app-no-drag hidden h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
+              className="app-no-drag hidden h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground/75 md:inline-flex"
               aria-label={t`Minimize bots`}
               title={t`Minimize bots`}
               data-testid="minimize-bots-sidebar"
@@ -2924,11 +2924,12 @@ export function ShellPage() {
             </button>
             <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
               <PopoverTrigger
-                className="app-no-drag text-[21px] text-muted-foreground/70 hover:text-foreground/75"
+                className="app-no-drag flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground/75"
+                aria-label={t`Create`}
                 title={t`Create`}
                 data-testid="create-menu-trigger"
               >
-                +
+                <Plus size={15} strokeWidth={1.8} aria-hidden="true" />
               </PopoverTrigger>
               {/* Unmount with the state change so the panel it opens never coexists with the menu. */}
               {createMenuOpen ? (
@@ -3061,7 +3062,7 @@ export function ShellPage() {
                         {group.title ? (
                           <button
                             type="button"
-                            className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground/60 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
+                            className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                             onClick={() => {
                               if (group.emptySpaceId) {
                                 openSpaceChat(group.emptySpaceId, "/onboarding");
@@ -3367,7 +3368,7 @@ export function ShellPage() {
                                   </div>
                                   <div className="flex shrink-0 items-center gap-1.5">
                                     {!compact ? (
-                                      <span className="text-[11.5px] text-muted-foreground/60 tabular-nums">
+                                      <span className="text-[11.5px] text-muted-foreground tabular-nums">
                                         {formatRosterTime(item.chat.updatedAt)}
                                       </span>
                                     ) : null}
@@ -3420,7 +3421,7 @@ export function ShellPage() {
                                         ? "font-semibold text-status-working"
                                         : item.chat.unread
                                           ? "font-medium text-foreground/75"
-                                          : "text-muted-foreground/60"
+                                          : "text-muted-foreground"
                                     }`}
                                   >
                                     {rosterLine}
@@ -6216,7 +6217,7 @@ export const Composer = memo(function Composer({
               data-testid="skill-chip"
               className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[13px] text-foreground"
             >
-              <Box size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />
+              <Box size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground" />
               <span dir="auto" className="truncate">
                 {selectedSkill.name}
               </span>
@@ -6458,10 +6459,10 @@ function MentionOptionIcon({ mention }: { mention: ComposerMention }) {
 
 function MentionChipIcon({ mention }: { mention: ComposerMention }) {
   if (mention.kind === "routine") {
-    return <Clock size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
+    return <Clock size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground" />;
   }
   if (mention.kind === "connector") {
-    return <Puzzle size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
+    return <Puzzle size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground" />;
   }
   if (mention.kind === "group" || mention.kind === "everyone") {
     return (

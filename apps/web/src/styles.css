@@ -42,6 +42,15 @@ body,
   -webkit-app-region: no-drag;
 }
 
+::selection {
+  background: color-mix(in srgb, var(--ring) 28%, transparent);
+}
+
+:root {
+  caret-color: var(--ring);
+  text-underline-offset: 2px;
+}
+
 @keyframes rkPulse {
   0%,
   100% {
