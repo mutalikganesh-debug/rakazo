@@ -7,9 +7,8 @@
  * the production caller backed by the user's existing model credential rows
  * (UserModelCredential / SpaceModelPreference + secret store).
  */
-
-import { parseModelSecret } from "@rakazo/adapters";
 import type { PrismaClient } from "@rakazo/db";
+import { parseModelSecret } from "@rakazo/adapters";
 
 export type SecretLoader = {
   load: (ciphertext: string, id: string) => Promise<string>;
@@ -61,6 +60,7 @@ export type DeliberationLimits = {
   maxTokensPerTurn: number;
   maxTokensSynthesis: number;
   callTimeoutMs: number;
+  synthesisTimeoutMs: number;
   timeoutGraceMs: number;
   questionMaxChars: number;
   peerTakeChars: number;
@@ -71,8 +71,9 @@ export const DELIBERATION_LIMITS: DeliberationLimits = {
   maxAgents: 6,
   crossRounds: 1,
   maxTokensPerTurn: 500,
-  maxTokensSynthesis: 900,
+  maxTokensSynthesis: 500,
   callTimeoutMs: 60_000,
+  synthesisTimeoutMs: 180_000,
   timeoutGraceMs: 5_000,
   questionMaxChars: 4000,
   peerTakeChars: 600,
@@ -154,10 +155,8 @@ export async function runDeliberation(input: {
     throw new Error(`Question is longer than ${limits.questionMaxChars} characters.`);
   }
   const agents = input.agents;
-  if (agents.length < limits.minAgents)
-    throw new Error(`Pick at least ${limits.minAgents} agents.`);
-  if (agents.length > limits.maxAgents)
-    throw new Error(`At most ${limits.maxAgents} agents per deliberation.`);
+  if (agents.length < limits.minAgents) throw new Error(`Pick at least ${limits.minAgents} agents.`);
+  if (agents.length > limits.maxAgents) throw new Error(`At most ${limits.maxAgents} agents per deliberation.`);
 
   const turns: DeliberationTurn[] = [];
   let seq = input.startSeq ?? 0;
@@ -169,10 +168,10 @@ export async function runDeliberation(input: {
     return full;
   };
 
-  const call = (agent: DeliberationAgent, system: string, prompt: string, maxTokens: number) =>
+  const call = (agent: DeliberationAgent, system: string, prompt: string, maxTokens: number, timeoutMs = limits.callTimeoutMs) =>
     withTimeout(
-      input.complete({ agent, system, prompt, maxTokens, timeoutMs: limits.callTimeoutMs }),
-      limits.callTimeoutMs + limits.timeoutGraceMs,
+      input.complete({ agent, system, prompt, maxTokens, timeoutMs }),
+      timeoutMs + limits.timeoutGraceMs,
       `${agent.name}`,
     );
 
@@ -196,13 +195,7 @@ export async function runDeliberation(input: {
   for (const outcome of first) {
     await emit(
       outcome.content !== undefined
-        ? {
-            kind: "agent",
-            agentId: outcome.agent.id,
-            agentName: outcome.agent.name,
-            round: 0,
-            content: outcome.content,
-          }
+        ? { kind: "agent", agentId: outcome.agent.id, agentName: outcome.agent.name, round: 0, content: outcome.content }
         : {
             kind: "note",
             agentId: outcome.agent.id,
@@ -224,10 +217,7 @@ export async function runDeliberation(input: {
         const agent = outcome.agent;
         const peers = takes
           .filter((peer) => peer.agent.id !== agent.id)
-          .map(
-            (peer) =>
-              `${peer.agent.name} (${peer.agent.role}):\n${truncate(peer.content ?? "", limits.peerTakeChars)}`,
-          )
+          .map((peer) => `${peer.agent.name} (${peer.agent.role}):\n${truncate(peer.content ?? "", limits.peerTakeChars)}`)
           .join("\n\n");
         try {
           const content = await call(
@@ -245,13 +235,7 @@ export async function runDeliberation(input: {
     for (const outcome of next) {
       await emit(
         outcome.content !== undefined
-          ? {
-              kind: "agent",
-              agentId: outcome.agent.id,
-              agentName: outcome.agent.name,
-              round,
-              content: outcome.content,
-            }
+          ? { kind: "agent", agentId: outcome.agent.id, agentName: outcome.agent.name, round, content: outcome.content }
           : {
               kind: "note",
               agentId: outcome.agent.id,
@@ -269,24 +253,14 @@ export async function runDeliberation(input: {
   // present, else the first roster entry.
   const takes = turns.filter((turn) => turn.kind === "agent" && turn.content.trim().length > 0);
   if (takes.length === 0) {
-    await emit({
-      kind: "note",
-      agentId: null,
-      agentName: "Deliberation",
-      round: 0,
-      content: "No agent produced an answer.",
-      meta: { error: true },
-    });
+    await emit({ kind: "note", agentId: null, agentName: "Deliberation", round: 0, content: "No agent produced an answer.", meta: { error: true } });
     return { turns, jointAnswer: null, dissent: null, status: "error" };
   }
   const synthesizer =
     agents.find((agent) => /chief/i.test(`${agent.name} ${agent.role}`)) ?? agents[0] ?? null;
   if (!synthesizer) throw new Error("unreachable: roster validated above");
   const transcript = takes
-    .map(
-      (turn) =>
-        `${turn.agentName} (round ${turn.round}):\n${truncate(turn.content, limits.peerTakeChars)}`,
-    )
+    .map((turn) => `${turn.agentName} (round ${turn.round}):\n${truncate(turn.content, limits.peerTakeChars)}`)
     .join("\n\n");
   try {
     const raw = await call(
@@ -294,6 +268,7 @@ export async function runDeliberation(input: {
       systemFor(synthesizer, agents),
       `Question from the user:\n${question}\n\nThe team's takes:\n\n${transcript}\n\nConverge the team onto one answer the user can act on. Attribute disagreement honestly. Answer in EXACTLY this format:\nJOINT ANSWER:\n<one concrete answer, max 150 words>\nDISSENT:\n<one line per dissenting member in the form "Name: reason", or the single word "none">`,
       limits.maxTokensSynthesis,
+      limits.synthesisTimeoutMs,
     );
     const { jointAnswer, dissent } = parseSynthesis(raw);
     await emit({
@@ -460,8 +435,7 @@ export const SEED_AGENTS: ReadonlyArray<Omit<DeliberationAgent, "id"> & { ordina
   {
     name: "Ship",
     role: "engineering",
-    persona:
-      "You judge feasibility, effort, failure modes, and what can actually be built and tested today.",
+    persona: "You judge feasibility, effort, failure modes, and what can actually be built and tested today.",
     modelProvider: null,
     modelId: null,
     color: "#F5A03C",
@@ -470,8 +444,7 @@ export const SEED_AGENTS: ReadonlyArray<Omit<DeliberationAgent, "id"> & { ordina
   {
     name: "Ops",
     role: "infrastructure",
-    persona:
-      "You judge deployment, reliability, security, monitoring, and rollback. Favour boring, reversible operations.",
+    persona: "You judge deployment, reliability, security, monitoring, and rollback. Favour boring, reversible operations.",
     modelProvider: null,
     modelId: null,
     color: "#F2622A",
@@ -551,11 +524,7 @@ export async function updateAgent(
   return agentDto(updated);
 }
 
-export async function loadAgents(
-  prisma: PrismaClient,
-  actor: ActorScope,
-  agentIds: readonly string[],
-) {
+export async function loadAgents(prisma: PrismaClient, actor: ActorScope, agentIds: readonly string[]) {
   await listAgents(prisma, actor);
   const rows = await prisma.agentProfile.findMany({
     where: { spaceId: actor.spaceId, userId: actor.userId, id: { in: [...agentIds] } },
@@ -608,8 +577,7 @@ export async function resolveModelEndpoint(
       where: { userId: actor.userId },
       orderBy: { updatedAt: "desc" },
     }));
-  if (!credential)
-    throw new Error("No model connected. Connect a model in Settings → Models first.");
+  if (!credential) throw new Error("No model connected. Connect a model in Settings → Models first.");
   const secret = await prisma.secret.findFirst({
     where: { id: credential.secretId, userId: actor.userId, spaceId: null },
     select: { id: true, ciphertext: true },
@@ -626,20 +594,12 @@ export async function resolveModelEndpoint(
   }
   const baseUrl = PROVIDER_BASE_URLS[credential.provider];
   if (parsed.kind !== "api_key") {
-    throw new Error(
-      "OAuth-only model credentials are not wired for deliberation; use an API-key credential.",
-    );
+    throw new Error("OAuth-only model credentials are not wired for deliberation; use an API-key credential.");
   }
   if (!baseUrl) {
-    throw new Error(
-      `Provider ${credential.provider} is not wired for deliberation; use an openai-compatible credential.`,
-    );
+    throw new Error(`Provider ${credential.provider} is not wired for deliberation; use an openai-compatible credential.`);
   }
-  return {
-    baseUrl,
-    apiKey: parsed.key,
-    model: agent.modelId ?? preferred?.modelId ?? fallbackModel,
-  };
+  return { baseUrl, apiKey: parsed.key, model: agent.modelId ?? preferred?.modelId ?? fallbackModel };
 }
 
 /** Production `complete`: one bounded OpenAI-compatible chat completion call. */
@@ -677,8 +637,7 @@ export function createModelComplete(
       choices?: Array<{ message?: { content?: unknown } }>;
     };
     const content = payload.choices?.[0]?.message?.content;
-    if (typeof content !== "string" || !content.trim())
-      throw new Error("model returned no content");
+    if (typeof content !== "string" || !content.trim()) throw new Error("model returned no content");
     return content;
   };
 }
