@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "cross-env NODE_ENV=production vite build",
+    "build": "cross-env NODE_ENV=production vite build --configLoader runner",
     "preview": "vite preview",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. apps/web/src",

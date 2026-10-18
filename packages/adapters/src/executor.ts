@@ -191,6 +191,7 @@ import {
   browserSnapshotFromTool,
 } from "./browser-tools.js";
 import { agentConnectionTools, builtinAgentTools, sharedMemorySaveError } from "./builtin-tools.js";
+import { runIntegrationAction } from "./direct-integrations.js";
 import { archiveSpawnedBot, spawnBot } from "./child-bots.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
 import { cloudAgentsEnabled } from "./cloud-agent-factory.js";
@@ -4756,6 +4757,36 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   )
                 : { ok: true, completed: result.completed };
             }, finish);
+          }
+          if (name === "gmail_send" || name === "gmail_read") {
+            const result = await runIntegrationAction(
+              deps.prisma,
+              deps.secretStore,
+              "gmail",
+              name === "gmail_send" ? "send" : "read",
+              (args ?? {}) as Record<string, unknown>,
+            );
+            return result.ok
+              ? { ok: true, ...(typeof result.result === "object" && result.result ? result.result : {}) }
+              : {
+                  error: result.error ?? "gmail action failed",
+                  ...(result.blockedOnSecret ? { blockedOnSecret: result.blockedOnSecret } : {}),
+                };
+          }
+          if (name === "google_calendar_create_event" || name === "google_calendar_list_events") {
+            const result = await runIntegrationAction(
+              deps.prisma,
+              deps.secretStore,
+              "google-calendar",
+              name === "google_calendar_create_event" ? "createEvent" : "listEvents",
+              (args ?? {}) as Record<string, unknown>,
+            );
+            return result.ok
+              ? { ok: true, ...(typeof result.result === "object" && result.result ? result.result : {}) }
+              : {
+                  error: result.error ?? "calendar action failed",
+                  ...(result.blockedOnSecret ? { blockedOnSecret: result.blockedOnSecret } : {}),
+                };
           }
           if (name === "list_files") {
             const requestedPath = String(args.path ?? "");

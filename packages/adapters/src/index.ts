@@ -1,4 +1,5 @@
 export * from "./agent-connections.js";
+export * from "./direct-integrations.js";
 export * from "./agent-environment.js";
 export * from "./ai-consent.js";
 export * from "./artifacts.js";

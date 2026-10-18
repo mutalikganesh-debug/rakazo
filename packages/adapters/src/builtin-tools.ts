@@ -145,6 +145,62 @@ const scheduleCreateInputSchema = {
 
 export const builtinAgentTools: ConnectorTool[] = [
   {
+    name: "gmail_send",
+    description:
+      "Send an email through the connected Gmail account. Use for any request to email someone. Args: to (email address), subject, body (plain text).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        to: { type: "string", description: "Recipient email address" },
+        subject: { type: "string" },
+        body: { type: "string", description: "Plain-text email body" },
+      },
+      required: ["to", "subject", "body"],
+    },
+  },
+  {
+    name: "gmail_read",
+    description:
+      "Read recent email from the connected Gmail inbox (sender, subject, date, short snippet). Args: limit (1-50, default 10), query (optional IMAP TEXT search).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: { type: "number" },
+        query: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "google_calendar_create_event",
+    description:
+      "Create an event on the connected Google Calendar. Args: summary (title), start (ISO date or date-time), end (optional ISO; defaults to +1h), description, location, attendees (email list).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        summary: { type: "string" },
+        start: { type: "string", description: "ISO date (YYYY-MM-DD) or date-time" },
+        end: { type: "string" },
+        description: { type: "string" },
+        location: { type: "string" },
+        attendees: { type: "array", items: { type: "string" } },
+      },
+      required: ["summary", "start"],
+    },
+  },
+  {
+    name: "google_calendar_list_events",
+    description:
+      "List upcoming events from the connected Google Calendar. Args: timeMin, timeMax (ISO), limit (1-50, default 10).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        timeMin: { type: "string" },
+        timeMax: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+  },
+  {
     name: "computer_observe",
     description:
       "Capture the current screen of this bot's computer. Returns frame metadata and an image. Observe before coordinate-based actions and whenever another actor may have changed the desktop.",

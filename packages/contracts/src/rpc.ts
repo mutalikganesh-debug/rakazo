@@ -121,6 +121,15 @@ import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
+import {
+  IntegrationActionInputSchema,
+  IntegrationActionResultSchema,
+  IntegrationHealthInputSchema,
+  IntegrationHealthOutputSchema,
+  IntegrationSaveConfigInputSchema,
+  IntegrationSaveConfigOutputSchema,
+  IntegrationsListOutputSchema,
+} from "./integrations.js";
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
@@ -786,6 +795,15 @@ export const appContract = {
   integrationSetup: {
     get: oc.output(IntegrationSetupStateSchema),
     save: oc.input(IntegrationProviderConfigSchema).output(z.object({ ok: z.literal(true) })),
+  },
+  /** Direct self-hosted connectors (Gmail app-password, Google Calendar OAuth env flow). */
+  integrations: {
+    list: oc.output(IntegrationsListOutputSchema),
+    health: oc.input(IntegrationHealthInputSchema).output(IntegrationHealthOutputSchema),
+    saveConfig: oc
+      .input(IntegrationSaveConfigInputSchema)
+      .output(IntegrationSaveConfigOutputSchema),
+    action: oc.input(IntegrationActionInputSchema).output(IntegrationActionResultSchema),
   },
   connections: {
     catalog: oc

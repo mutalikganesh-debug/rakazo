@@ -9,6 +9,7 @@ import {
   Gauge,
   KeyRound,
   Monitor,
+  Plug,
   Settings,
   Volume2,
   XIcon,
@@ -23,6 +24,7 @@ import {
   UsageSettingsPanel,
 } from "./AccountSettingsOverlay";
 import { BillingSettingsPanel } from "./BillingSettingsPanel";
+import { IntegrationsSettingsPanel } from "./IntegrationsSettingsPanel";
 import { MemorySettingsOverlay } from "./MemorySettingsOverlay";
 import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
 import { SecretsSettingsPanel } from "./SecretsSettingsPanel";
@@ -37,6 +39,7 @@ export type SettingsSection =
   | "computer"
   | "billing"
   | "updates"
+  | "integrations"
   | "secrets";
 
 type NavItem = {
@@ -136,20 +139,39 @@ export function SettingsOverlay({
     }
   }, [section, onUsageOpen]);
 
-  const navItems: NavItem[] = [
-    { id: "general", label: t`General`, icon: Settings },
-    { id: "models", label: t`Models`, icon: Cpu },
-    { id: "memory", label: t`Memory`, icon: Brain },
-    { id: "voice", label: t`Voice`, icon: Volume2 },
-    { id: "usage", label: t`Usage`, icon: Gauge },
-    ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
-    ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
-    { id: "updates", label: t`Updates`, icon: CloudDownload },
-    { id: "secrets", label: t`Secrets`, icon: KeyRound },
+  // Grouped nav: sections read as areas instead of one flat list.
+  const navGroups: { label: string; items: NavItem[] }[] = [
+    { label: t`Account`, items: [{ id: "general", label: t`General`, icon: Settings }] },
+    {
+      label: t`Agent`,
+      items: [
+        { id: "models", label: t`Models`, icon: Cpu },
+        { id: "memory", label: t`Memory`, icon: Brain },
+        { id: "voice", label: t`Voice`, icon: Volume2 },
+        ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
+      ],
+    },
+    {
+      label: t`Connections`,
+      items: [
+        { id: "integrations", label: t`Integrations`, icon: Plug },
+        { id: "secrets", label: t`Secrets`, icon: KeyRound },
+      ],
+    },
+    {
+      label: t`Billing & updates`,
+      items: [
+        { id: "usage", label: t`Usage`, icon: Gauge },
+        ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
+        { id: "updates", label: t`Updates`, icon: CloudDownload },
+      ],
+    },
   ];
 
   const sectionTitle =
-    navItems.find((item) => item.id === section)?.label ??
+    navGroups
+      .flatMap((group) => group.items)
+      .find((item) => item.id === section)?.label ??
     (section === "general" ? t`General` : t`Settings`);
 
   const closeLabel =
@@ -208,28 +230,35 @@ export function SettingsOverlay({
             aria-label={t`Settings`}
             className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-border px-3 py-3 md:w-[200px] md:flex-col md:overflow-y-auto md:border-b-0 md:border-e md:px-3 md:py-4"
           >
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = item.id === section;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  data-testid={`settings-nav-${item.id}`}
-                  aria-current={active ? "page" : undefined}
-                  disabled={panelBusy}
-                  onClick={() => setSection(item.id)}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
-                    active
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="size-4 shrink-0" strokeWidth={1.75} />
-                  <span className="whitespace-nowrap">{item.label}</span>
-                </button>
-              );
-            })}
+            {navGroups.map((group) => (
+              <div key={group.label} className="flex flex-row gap-1 md:flex-col md:gap-1">
+                <span className="hidden px-2.5 pt-2 pb-1 text-[11px] font-medium tracking-wider text-muted-foreground/60 uppercase md:block">
+                  {group.label}
+                </span>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = item.id === section;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-testid={`settings-nav-${item.id}`}
+                      aria-current={active ? "page" : undefined}
+                      disabled={panelBusy}
+                      onClick={() => setSection(item.id)}
+                      className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                        active
+                          ? "bg-muted text-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="size-4 shrink-0" strokeWidth={1.75} />
+                      <span className="whitespace-nowrap">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -284,6 +313,7 @@ export function SettingsOverlay({
                 <UpdatesSettingsPanel isDeploymentOwner={isDeploymentOwner} />
               ) : null}
               {section === "secrets" ? <SecretsSettingsPanel /> : null}
+              {section === "integrations" ? <IntegrationsSettingsPanel /> : null}
               {section === "models" ? (
                 <ModelSettingsOverlay embedded onClose={requestClose} />
               ) : null}

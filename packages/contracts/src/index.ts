@@ -14,6 +14,7 @@ export * from "./goals.js";
 export * from "./history.js";
 export * from "./ids.js";
 export * from "./integration-settings.js";
+export * from "./integrations.js";
 export * from "./local-settings.js";
 export * from "./markdown-text.js";
 export * from "./mcp.js";

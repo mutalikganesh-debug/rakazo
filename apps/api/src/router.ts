@@ -221,6 +221,12 @@ import {
   putAgentSecret,
   revealAgentSecret,
 } from "./agent-secrets.js";
+import {
+  integrationConnectorStatuses,
+  integrationHealth,
+  runIntegrationAction,
+  saveIntegrationConfig,
+} from "@rakazo/adapters";
 import { createAgentSkillsService } from "./agent-skills.js";
 import { aiConsentStatus, allowAiConsent } from "./ai-consent.js";
 import {
@@ -4741,7 +4747,42 @@ export function createRouter(deps: RouterDeps) {
         return { ok: true as const };
       }),
     },
-    integrationSetup: {
+      integrations: {
+      list: authed.integrations.list.handler(async ({ context }) => {
+        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
+        return { connectors: await integrationConnectorStatuses(deps.prisma, deps.secrets) };
+      }),
+      health: authed.integrations.health.handler(async ({ context, input }) => {
+        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
+        const health = await integrationHealth(deps.prisma, deps.secrets, input.id);
+        return { id: input.id, ...health };
+      }),
+      saveConfig: authed.integrations.saveConfig.handler(async ({ context, input }) => {
+        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
+        await saveIntegrationConfig(
+          deps.prisma,
+          deps.secrets,
+          connectionContext(context.actor, "integrations.saveConfig", context.signal),
+          input,
+        );
+        const status = (await integrationConnectorStatuses(deps.prisma, deps.secrets)).find(
+          (s) => s.id === input.id,
+        );
+        if (!status) throw new ORPCError("NOT_FOUND");
+        return { ok: true as const, status };
+      }),
+      action: authed.integrations.action.handler(async ({ context, input }) => {
+        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
+        return await runIntegrationAction(
+          deps.prisma,
+          deps.secrets,
+          input.connector,
+          input.action,
+          input.params,
+        );
+      }),
+    },
+  integrationSetup: {
       get: authed.integrationSetup.get.handler(async ({ context }) => {
         const canConfigure = context.actor.isDeploymentOwner;
         const providers = canConfigure

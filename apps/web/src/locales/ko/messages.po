@@ -194,6 +194,10 @@ msgstr "{workingBotName} 작업 중"
 msgid "@{0}"
 msgstr "@{0}"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "16-character app password"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr ""
@@ -226,6 +230,7 @@ msgid "Access token (optional)"
 msgstr "액세스 토큰(선택 사항)"
 
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/SettingsOverlay.tsx
 msgid "Account"
 msgstr "계정"
 
@@ -355,6 +360,10 @@ msgstr "OpenAPI 추가"
 msgid "Add remote MCP server"
 msgstr "원격 MCP 서버 추가"
 
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Add secret"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "서버 추가"
@@ -398,6 +407,10 @@ msgstr "고급 설정"
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
 msgstr "고급..."
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Agent computer"
@@ -466,6 +479,10 @@ msgstr "한 번 허용됨"
 msgid "Already have an account?"
 msgstr "이미 계정이 있나요?"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Alternatively set these environment variables:"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -519,6 +536,10 @@ msgstr "API 키"
 #: src/pages/PluginsOverlay.tsx
 msgid "API key header"
 msgstr "API 키 헤더"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "App password"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Appearance"
@@ -688,6 +709,7 @@ msgid "Backup models saved."
 msgstr "백업 모델을 저장했습니다."
 
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Base URL"
 msgstr "서버 주소"
 
@@ -707,6 +729,10 @@ msgstr "Bearer 토큰"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Billing & updates"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -785,6 +811,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Built-in"
 msgstr "기본 제공"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Calendar ID"
+msgstr ""
 
 #: src/App.tsx
 msgid "Can't reach the server."
@@ -1157,6 +1187,10 @@ msgstr "백업을 추가하려면 제공업체를 연결하세요."
 msgid "Connect API key"
 msgstr "API 키 연결"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Connect email and calendar so your agents can act on them. Credentials are stored encrypted and are never shown again after saving."
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Connect Executor"
 msgstr "Executor 연결"
@@ -1178,6 +1212,7 @@ msgid "Connect Treg"
 msgstr "Treg 연결"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/IntegrationsSettingsPanel.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1215,6 +1250,14 @@ msgstr "연결되었습니다. 다음 메시지부터 이 도구를 사용할 �
 msgid "Connecting…"
 msgstr "연결 중…"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Connection failed"
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Connection OK"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "연결 테스트에 실패했습니다."
@@ -1223,6 +1266,10 @@ msgstr "연결 테스트에 실패했습니다."
 #: src/pages/PluginsOverlay.tsx
 msgid "Connection to {0} is still pending. You can close this and check again."
 msgstr "{0} 연결이 아직 진행 중입니다. 이 창을 닫고 나중에 다시 확인할 수 있습니다."
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Connections"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -1427,6 +1474,10 @@ msgstr "{name}을 다운로드하지 못했습니다. 다시 시도해 주세요
 msgid "Could not download file"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Could not generate the image."
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not install connector"
 msgstr "도구 연결을 추가하지 못했습니다."
@@ -1473,6 +1524,7 @@ msgid "Could not load credentials."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/IntegrationsSettingsPanel.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not load integrations"
 msgstr "연동 목록을 불러오지 못했습니다."
@@ -1488,6 +1540,10 @@ msgstr "AI 모델 설정을 불러오지 못했습니다."
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
 msgstr "실행 기록을 불러오지 못했습니다"
+
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Could not load secrets"
+msgstr ""
 
 #: src/lib/account-security.ts
 #: src/pages/Auth.tsx
@@ -1724,6 +1780,10 @@ msgstr "메시징 설정을 업데이트할 수 없습니다"
 msgid "Create"
 msgstr "만들기"
 
+#: src/pages/Board.tsx
+msgid "Create a bot first"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
 msgid "Create a section and move {0} into it."
@@ -1865,6 +1925,7 @@ msgstr "기본 기억 범위"
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/SecretsSettingsPanel.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
@@ -1918,6 +1979,10 @@ msgstr "삭제 중…"
 msgid "Deletion code"
 msgstr "삭제 코드"
 
+#: src/pages/Shell.tsx
+msgid "Deliberation"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Denied"
 msgstr "거부됨"
@@ -1929,6 +1994,10 @@ msgstr "거부"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "서버 기본값"
+
+#: src/pages/Artifacts.tsx
+msgid "Describe the image to generate…"
+msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Describe what this bot does"
@@ -2072,6 +2141,10 @@ msgstr "Bot 정보 수정"
 #: src/pages/Auth.tsx
 msgid "Email"
 msgstr "이메일"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Email address"
+msgstr ""
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2303,6 +2376,18 @@ msgstr "게이트웨이 ID"
 msgid "General"
 msgstr "일반"
 
+#: src/pages/Artifacts.tsx
+msgid "Generate"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Generate image"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Generating…"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Get credentials"
 msgstr ""
@@ -2318,6 +2403,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Git event"
 msgstr "Git 이벤트"
+
+#: src/pages/Shell.tsx
+msgid "Goals"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -2374,6 +2463,10 @@ msgstr "샘플 듣기"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "안녕하세요. 답변을 소리 내어 읽을 때 이런 목소리로 들립니다."
 
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Hide"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Hide bots"
 msgstr ""
@@ -2381,6 +2474,10 @@ msgstr ""
 #: src/components/I18nBootstrap.tsx
 msgid "Hide password"
 msgstr "비밀번호 숨기기"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Hide setup"
+msgstr ""
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
@@ -2475,6 +2572,7 @@ msgid "Integration options"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
+#: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr "앱·도구 연동"
@@ -2545,6 +2643,14 @@ msgstr ""
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Leave"
 msgstr "나가기"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Lets your agents create and list events on your Google Calendar."
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Lets your agents send and read email through your Gmail account."
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
@@ -2933,6 +3039,7 @@ msgstr "음소거"
 #: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/SecretsSettingsPanel.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2951,6 +3058,10 @@ msgstr "그룹 이름"
 msgid "Name this routine"
 msgstr "이 루틴의 이름을 정하세요"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "name@example.com"
+msgstr ""
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr ""
@@ -2958,6 +3069,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "입력 필요"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Needs setup"
+msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
@@ -3046,6 +3161,10 @@ msgstr ""
 msgid "No group chats yet."
 msgstr "아직 그룹 채팅이 없습니다."
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "No integrations available."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "No longer active"
 msgstr "이미 종료된 요청입니다"
@@ -3102,6 +3221,10 @@ msgstr ""
 #: src/pages/RoutineRunHistory.tsx
 msgid "No runs yet"
 msgstr "아직 실행 기록이 없습니다"
+
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "No secrets yet."
+msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No skills yet"
@@ -3168,6 +3291,14 @@ msgstr "이제 {0} 모델을 사용합니다."
 msgid "OAuth authorization was cancelled."
 msgstr "OAuth 인증이 취소되었습니다."
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "OAuth client ID"
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "OAuth client secret"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "OAuth connected"
 msgstr "OAuth 연결됨"
@@ -3178,6 +3309,10 @@ msgstr "OAuth 연결 실패"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "OAuth expired"
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "OAuth refresh token"
 msgstr ""
 
 #. placeholder {0}: call.botName
@@ -3395,6 +3530,10 @@ msgstr "{0} 미리보기"
 
 #: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "primary"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -3747,6 +3886,10 @@ msgstr "Rakazo로 돌아가기"
 msgid "rev {0}"
 msgstr "리비전 {0}"
 
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Reveal"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "서비스 설정을 확인한 뒤 다시 테스트하세요."
@@ -3817,6 +3960,7 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
+#: src/pages/IntegrationsSettingsPanel.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -3844,6 +3988,10 @@ msgstr ""
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
 msgstr "작업 공간을 저장하고 최신 소프트웨어를 설치합니다."
+
+#: src/pages/Artifacts.tsx
+msgid "Save to bot"
+msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
@@ -3941,6 +4089,14 @@ msgstr ""
 msgid "Searching…"
 msgstr "검색 중…"
 
+#: src/pages/SettingsOverlay.tsx
+msgid "Secrets"
+msgstr ""
+
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Secrets are encrypted at rest, available to agent shells as environment variables, and scrubbed from text sent to model providers (known values and common key patterns). Every reveal is recorded."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Select a bot"
 msgstr "대화할 Bot을 선택하세요"
@@ -4005,6 +4161,10 @@ msgstr "서버 이름"
 #: src/pages/Onboarding.tsx
 msgid "Server URL"
 msgstr "서버 URL"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Set up"
+msgstr ""
 
 #: src/components/call/CallCard.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -4338,6 +4498,10 @@ msgstr "시험 실행"
 msgid "Test API key"
 msgstr "API 키 테스트"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Test connection"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Test run"
 msgstr "테스트 실행"
@@ -4460,6 +4624,10 @@ msgstr "이 구독 로그인 방식은 아직 Rakazo에서 지원되지 않습�
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
+msgstr ""
+
+#: src/pages/Board.tsx
+msgid "Tickets you create here can be assigned to any agent."
 msgstr ""
 
 #: src/pages/RoutineSchedule.tsx
@@ -4684,6 +4852,7 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "이 서버의 자체 {hostCredentialSource} 자격 증명으로 {selectedProviderName}에 액세스합니다."
 
+#: src/pages/SecretsSettingsPanel.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""

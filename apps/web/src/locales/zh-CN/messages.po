@@ -194,6 +194,10 @@ msgstr "{workingBotName} 正在工作"
 msgid "@{0}"
 msgstr "@{0}"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "16-character app password"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr "什么都做一点"
@@ -226,6 +230,7 @@ msgid "Access token (optional)"
 msgstr "访问令牌（可选）"
 
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/SettingsOverlay.tsx
 msgid "Account"
 msgstr "账户"
 
@@ -355,6 +360,10 @@ msgstr "添加 OpenAPI"
 msgid "Add remote MCP server"
 msgstr "添加远程 MCP 服务器"
 
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Add secret"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "添加服务器"
@@ -398,6 +407,10 @@ msgstr "高级"
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
 msgstr "高级..."
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Agent computer"
@@ -466,6 +479,10 @@ msgstr "已允许一次"
 msgid "Already have an account?"
 msgstr "已有账户？"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Alternatively set these environment variables:"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -519,6 +536,10 @@ msgstr "API 密钥"
 #: src/pages/PluginsOverlay.tsx
 msgid "API key header"
 msgstr "API 密钥请求头"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "App password"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Appearance"
@@ -688,6 +709,7 @@ msgid "Backup models saved."
 msgstr "备用模型已保存。"
 
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Base URL"
 msgstr "Base URL"
 
@@ -707,6 +729,10 @@ msgstr "Bearer token"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Billing & updates"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -785,6 +811,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Built-in"
 msgstr "内置"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Calendar ID"
+msgstr ""
 
 #: src/App.tsx
 msgid "Can't reach the server."
@@ -1157,6 +1187,10 @@ msgstr "连接提供商后即可添加备用模型。"
 msgid "Connect API key"
 msgstr "连接 API 密钥"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Connect email and calendar so your agents can act on them. Credentials are stored encrypted and are never shown again after saving."
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Connect Executor"
 msgstr "连接 Executor"
@@ -1178,6 +1212,7 @@ msgid "Connect Treg"
 msgstr "连接 Treg"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/IntegrationsSettingsPanel.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1215,6 +1250,14 @@ msgstr "已连接，下一条消息起即可使用其工具。"
 msgid "Connecting…"
 msgstr "正在连接…"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Connection failed"
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Connection OK"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "连接测试失败。"
@@ -1223,6 +1266,10 @@ msgstr "连接测试失败。"
 #: src/pages/PluginsOverlay.tsx
 msgid "Connection to {0} is still pending. You can close this and check again."
 msgstr "与 {0} 的连接仍在等待。可以关闭此窗口稍后再看。"
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Connections"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -1427,6 +1474,10 @@ msgstr "无法下载 {name}。请重试。"
 msgid "Could not download file"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Could not generate the image."
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not install connector"
 msgstr "无法安装连接器"
@@ -1473,6 +1524,7 @@ msgid "Could not load credentials."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/IntegrationsSettingsPanel.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not load integrations"
 msgstr "无法加载集成"
@@ -1488,6 +1540,10 @@ msgstr "无法加载模型设置"
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
 msgstr "无法加载运行历史记录"
+
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Could not load secrets"
+msgstr ""
 
 #: src/lib/account-security.ts
 #: src/pages/Auth.tsx
@@ -1724,6 +1780,10 @@ msgstr "无法更新消息设置"
 msgid "Create"
 msgstr "创建"
 
+#: src/pages/Board.tsx
+msgid "Create a bot first"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
 msgid "Create a section and move {0} into it."
@@ -1865,6 +1925,7 @@ msgstr "默认范围"
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/SecretsSettingsPanel.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
@@ -1918,6 +1979,10 @@ msgstr "正在删除…"
 msgid "Deletion code"
 msgstr "删除验证码"
 
+#: src/pages/Shell.tsx
+msgid "Deliberation"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Denied"
 msgstr "已拒绝"
@@ -1929,6 +1994,10 @@ msgstr "拒绝"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "部署默认"
+
+#: src/pages/Artifacts.tsx
+msgid "Describe the image to generate…"
+msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Describe what this bot does"
@@ -2072,6 +2141,10 @@ msgstr "编辑资料"
 #: src/pages/Auth.tsx
 msgid "Email"
 msgstr "邮箱"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Email address"
+msgstr ""
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2303,6 +2376,18 @@ msgstr "网关 ID"
 msgid "General"
 msgstr "通用"
 
+#: src/pages/Artifacts.tsx
+msgid "Generate"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Generate image"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Generating…"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Get credentials"
 msgstr ""
@@ -2318,6 +2403,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Git event"
 msgstr "Git 事件"
+
+#: src/pages/Shell.tsx
+msgid "Goals"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -2374,6 +2463,10 @@ msgstr "试听"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "你好，这是我朗读回复时的声音。"
 
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Hide"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Hide bots"
 msgstr ""
@@ -2381,6 +2474,10 @@ msgstr ""
 #: src/components/I18nBootstrap.tsx
 msgid "Hide password"
 msgstr "隐藏密码"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Hide setup"
+msgstr ""
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
@@ -2475,6 +2572,7 @@ msgid "Integration options"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
+#: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr "集成"
@@ -2545,6 +2643,14 @@ msgstr ""
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Leave"
 msgstr "退出"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Lets your agents create and list events on your Google Calendar."
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Lets your agents send and read email through your Gmail account."
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
@@ -2933,6 +3039,7 @@ msgstr "静音"
 #: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/SecretsSettingsPanel.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2951,6 +3058,10 @@ msgstr "给这个群组命名"
 msgid "Name this routine"
 msgstr "给这个例行任务命名"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "name@example.com"
+msgstr ""
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr ""
@@ -2958,6 +3069,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "需要输入"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Needs setup"
+msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
@@ -3046,6 +3161,10 @@ msgstr ""
 msgid "No group chats yet."
 msgstr "还没有群聊。"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "No integrations available."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "No longer active"
 msgstr "已停用"
@@ -3102,6 +3221,10 @@ msgstr ""
 #: src/pages/RoutineRunHistory.tsx
 msgid "No runs yet"
 msgstr "还没有运行记录"
+
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "No secrets yet."
+msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No skills yet"
@@ -3168,6 +3291,14 @@ msgstr "正在使用 {0}。"
 msgid "OAuth authorization was cancelled."
 msgstr "OAuth 授权已取消。"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "OAuth client ID"
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "OAuth client secret"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "OAuth connected"
 msgstr "OAuth 已连接"
@@ -3178,6 +3309,10 @@ msgstr "OAuth 连接失败"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "OAuth expired"
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "OAuth refresh token"
 msgstr ""
 
 #. placeholder {0}: call.botName
@@ -3395,6 +3530,10 @@ msgstr "预览 {0}"
 
 #: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
+msgstr ""
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "primary"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -3747,6 +3886,10 @@ msgstr "返回 Rakazo"
 msgid "rev {0}"
 msgstr "版本 {0}"
 
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Reveal"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "请检查提供方设置并重新测试。"
@@ -3817,6 +3960,7 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
+#: src/pages/IntegrationsSettingsPanel.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -3844,6 +3988,10 @@ msgstr ""
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
 msgstr "保存工作区并安装最新软件。"
+
+#: src/pages/Artifacts.tsx
+msgid "Save to bot"
+msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
@@ -3941,6 +4089,14 @@ msgstr ""
 msgid "Searching…"
 msgstr "正在搜索…"
 
+#: src/pages/SettingsOverlay.tsx
+msgid "Secrets"
+msgstr ""
+
+#: src/pages/SecretsSettingsPanel.tsx
+msgid "Secrets are encrypted at rest, available to agent shells as environment variables, and scrubbed from text sent to model providers (known values and common key patterns). Every reveal is recorded."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Select a bot"
 msgstr "选择 Bot"
@@ -4005,6 +4161,10 @@ msgstr "服务器名称"
 #: src/pages/Onboarding.tsx
 msgid "Server URL"
 msgstr "服务器 URL"
+
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Set up"
+msgstr ""
 
 #: src/components/call/CallCard.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -4338,6 +4498,10 @@ msgstr "测试"
 msgid "Test API key"
 msgstr "测试 API 密钥"
 
+#: src/pages/IntegrationsSettingsPanel.tsx
+msgid "Test connection"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Test run"
 msgstr "测试运行"
@@ -4460,6 +4624,10 @@ msgstr "此订阅登录在 Rakazo 中尚不可用。请使用部署凭据或选�
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
+msgstr ""
+
+#: src/pages/Board.tsx
+msgid "Tickets you create here can be assigned to any agent."
 msgstr ""
 
 #: src/pages/RoutineSchedule.tsx
@@ -4684,6 +4852,7 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "使用此服务器自己的 {hostCredentialSource} 凭据访问 {selectedProviderName}。"
 
+#: src/pages/SecretsSettingsPanel.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""
