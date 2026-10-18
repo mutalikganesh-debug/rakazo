@@ -503,6 +503,29 @@ export function recordEvidence(state: GoalState, ids: string[]): GoalState {
   return out;
 }
 
+/** Last `ANSWER: <text>` envelope line of a continuation turn (worker's proposed answer). */
+export function harvestAnswer(text: string): string | null {
+  let found: string | null = null;
+  for (const line of String(text ?? "").split("\n")) {
+    const match = /^\s*ANSWER:\s*(.+?)\s*$/i.exec(line);
+    if (match)
+      found =
+        String(match[1] ?? "")
+          .trim()
+          .slice(0, 2000) || found;
+  }
+  return found;
+}
+
+/** Worker-proposed answer: the S1.4 literal-match side of the final_answer check. */
+export function recordAnswer(state: GoalState, answer: string | null): GoalState {
+  if (answer === null || answer === state.proposedAnswer) return state;
+  const out: GoalState = { ...state };
+  out.proposedAnswer = answer;
+  out.updatedAt = goalTs();
+  return out;
+}
+
 /** Parse `EVIDENCE: <id>` envelope lines from a continuation turn. */
 export function harvestEvidenceIds(text: string): string[] {
   const ids: string[] = [];
@@ -859,11 +882,13 @@ export function buildEvalPrompt(state: GoalState, transcript = ""): string | nul
     "Evaluate this goal. Reply with exactly one line " +
     "'VERDICT: met|continue|impossible - <reason>' followed by a JSON object " +
     "with keys verdict, reason, requirements (list of {id, met, failureMode, " +
-    "evidence (ONLY ids from the EVIDENCE list below), todos}), final_answer (optional).\n\n" +
+    "evidence (ONLY ids from the EVIDENCE list below), todos}), final_answer (optional; " +
+    "include ONLY if an ANSWER block is recorded below, then copy it EXACTLY).\n\n" +
     `OBJECTIVE:\n${objective}\n\n` +
     `TODOS:\n${JSON.stringify(state.todos ?? [], null, 0)}\n\n` +
     `LESSONS:\n${JSON.stringify([...(state.lessons ?? [])].sort())}\n\n` +
     `EVIDENCE:\n${JSON.stringify(state.evidence ?? [])}\n\n` +
+    (state.proposedAnswer !== null ? `ANSWER:\n${state.proposedAnswer}\n\n` : "") +
     "TRANSCRIPT:\n";
   const budget = EVAL_PROMPT_MAX_CHARS - head.length;
   if (budget < 0) return null;
@@ -1263,7 +1288,9 @@ export async function runGoalLoop(
             "as far as you can right now. Be concrete and concise; state what you did and what remains. " +
             "Plain text only.\n\nFor each verifiable artifact or check you complete, add its own line " +
             "'EVIDENCE: <id>' (a short stable id such as a filename or hash) before the verdict line, " +
-            "so the evaluator can cite it.\n\nEnd your reply with EXACTLY ONE line in the form " +
+            "so the evaluator can cite it. When the objective asks for an answer or deliverable text, " +
+            "also record it as ONE line 'ANSWER: <text>' before the verdict line.\n\n" +
+            "End your reply with EXACTLY ONE line in the form " +
             "'VERDICT: DONE - <summary>' when the objective's work is finished, or " +
             "'VERDICT: BLOCKED - <summary>' when you cannot proceed.",
           prompt,
@@ -1284,8 +1311,10 @@ export async function runGoalLoop(
     // worker-reported evidence lands BEFORE the evaluator checkpoint so
     // revalidateMet can accept evaluator-cited requirement evidence ids
     const evidenceIds = turnError ? [] : harvestEvidenceIds(turnText);
-    if (evidenceIds.length) {
+    const answer = turnError ? null : harvestAnswer(turnText);
+    if (evidenceIds.length || answer !== null) {
       current = recordEvidence(current, evidenceIds);
+      current = recordAnswer(current, answer);
       await commit(current);
     }
 

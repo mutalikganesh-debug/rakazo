@@ -14,10 +14,12 @@ import {
   gateVerdictLine,
   goalResume,
   goalTransition,
+  harvestAnswer,
   harvestEvidenceIds,
   memoryGoalStore,
   newGoalState,
   parseEvaluatorOutput,
+  recordAnswer,
   recordEvidence,
   revalidateMet,
   runGoalLoop,
@@ -457,5 +459,53 @@ describe("evidence recording path (met reachability)", () => {
     expect(result.state.status).toBe("complete");
     expect(result.state.evidence).toContain("/tmp/goal-e2e/x.txt");
     expect(result.output.split("\n").filter((l) => l.startsWith("VERDICT:")).length).toBe(1);
+  });
+
+  it("ANSWER envelope sets proposedAnswer; matching final_answer completes", async () => {
+    expect(
+      harvestAnswer(
+        "line\nANSWER: the contract sentence\nmore\nANSWER: final text\nVERDICT: DONE - x",
+      ),
+    ).toBe("final text");
+    const complete = stubComplete(
+      () => ({ text: "done\nANSWER: the contract sentence\nVERDICT: DONE - done" }),
+      () => ({
+        text:
+          "VERDICT: met - done\n" +
+          JSON.stringify({
+            verdict: "met",
+            reason: "done",
+            requirements: [],
+            final_answer: "the contract sentence",
+          }),
+      }),
+    );
+    const store = memoryGoalStore();
+    const state = newGoalState("goal_ev5", "produce the sentence", { verifyCmd: "true" });
+    await store.commit(null, state);
+    const result = await runGoalLoop(state, { deps: { complete, runVerify: okVerify, store } });
+    expect(result.state.proposedAnswer).toBe("the contract sentence");
+    expect(result.state.status).toBe("complete");
+  });
+
+  it("final_answer mismatch is still demoted (S1.4 strict)", async () => {
+    let state = newGoalState("goal_ev6", "produce the sentence", { verifyCmd: "true" });
+    state = recordAnswer(state, "the contract sentence");
+    const complete = stubComplete(
+      () => ({ text: "done\nVERDICT: DONE - done" }),
+      () => ({
+        text:
+          "VERDICT: met - done\n" +
+          JSON.stringify({
+            verdict: "met",
+            reason: "done",
+            requirements: [],
+            final_answer: "something else",
+          }),
+      }),
+    );
+    const result = await runGoalTurn(state, "done\nVERDICT: DONE - done", { deps: deps(complete) });
+    expect(result.evaluation?.verdict).toBe("continue");
+    expect(result.evaluation?.reason).toContain("final answer match");
   });
 });
