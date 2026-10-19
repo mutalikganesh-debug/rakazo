@@ -10,7 +10,8 @@ body,
 #root {
   height: 100%;
   margin: 0;
-  background: var(--background);
+  background-color: var(--background);
+  background-image: var(--gradient-surface, none);
   color: var(--foreground);
   font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 }

@@ -547,6 +547,8 @@
 .rk-nav-selected,
 [data-slot="command-item"][data-selected] {
   background-color: var(--nav-selected-bg);
+  background-image: var(--gradient-selected, none);
+  box-shadow: var(--glow-selected, none);
   color: var(--nav-selected-fg);
   --foreground: var(--nav-selected-fg);
   --muted-foreground: var(--nav-selected-fg);
@@ -574,6 +576,22 @@
   border-radius: 999px;
   background: var(--nav-selected-indicator);
   pointer-events: none;
+}
+
+/* Gradient accent (default-variant) buttons and gradient card lift. Solid
+   tokens stay as background-color underneath, so light mode keeps flat fills
+   (the gradient vars exist only under [data-theme="dark"]). */
+[data-slot="button"].bg-primary {
+  background-image: var(--gradient-accent, none);
+  box-shadow: var(--glow-button, none);
+}
+
+[data-slot="button"].bg-primary:hover {
+  background-image: var(--gradient-accent-hover, none);
+}
+
+[data-slot="card"] {
+  background-image: var(--gradient-panel, none);
 }
 
 /* Icon toggles and small pills: same fill, no indicator bar. */
