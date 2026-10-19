@@ -692,7 +692,7 @@ export function ModelSettingsOverlay({
         aria-current={group.id === provider ? "true" : undefined}
         onClick={() => chooseProvider(group.id)}
         className={`flex w-full items-center gap-3 border-b border-border px-3.5 py-3 text-start last:border-0 ${
-          group.id === provider ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+          group.id === provider ? "rk-nav-selected" : "hover:bg-accent/50"
         }`}
       >
         <span className="min-w-0 flex-1">
@@ -1811,7 +1811,7 @@ function ModelOption({
       aria-selected={option.id === value}
       tabIndex={highlighted ? 0 : -1}
       className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-start text-[13.5px] text-foreground outline-none hover:bg-accent focus-visible:bg-accent ${
-        highlighted ? "bg-accent" : ""
+        highlighted ? "rk-nav-selected rk-nav-flat" : ""
       }`}
       onClick={() => choose(index)}
       onKeyDown={(event) => onOptionKeyDown(event, index)}

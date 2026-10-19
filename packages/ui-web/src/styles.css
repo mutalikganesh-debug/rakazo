@@ -542,6 +542,114 @@
   }
 }
 
+/* Selected/active nav & menu surfaces. The inline var overrides keep nested
+   text, chips, and status labels legible on the strong selected fill. */
+.rk-nav-selected,
+[data-slot="command-item"][data-selected] {
+  background-color: var(--nav-selected-bg);
+  color: var(--nav-selected-fg);
+  --foreground: var(--nav-selected-fg);
+  --muted-foreground: var(--nav-selected-fg);
+  --muted: color-mix(in srgb, var(--nav-selected-fg) 18%, transparent);
+  --border: color-mix(in srgb, var(--nav-selected-fg) 35%, transparent);
+  --status-working: color-mix(in srgb, var(--nav-selected-fg) 90%, #a8c4ff);
+  --destructive: color-mix(in srgb, var(--nav-selected-fg) 82%, #ff8a7a);
+  --rk-presence-ring: var(--nav-selected-bg);
+}
+
+.rk-nav-selected,
+[data-slot="command-item"][data-selected] {
+  position: relative;
+}
+
+.rk-nav-selected::before,
+[data-slot="command-item"][data-selected]::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 2px;
+  top: 50%;
+  width: 3px;
+  height: 56%;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--nav-selected-indicator);
+  pointer-events: none;
+}
+
+/* Icon toggles and small pills: same fill, no indicator bar. */
+.rk-nav-flat::before {
+  display: none;
+}
+
+/* OpenAI-style typing dots in the streaming bot bubble. */
+@keyframes rkTypingBounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.rk-typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rk-typing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--muted-foreground);
+  animation: rkTypingBounce 1.2s ease-in-out infinite;
+}
+
+.rk-typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.rk-typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* Presence dot overlaid on roster avatars. */
+@keyframes rkPresencePulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.65;
+  }
+}
+
+.rk-presence-dot {
+  position: absolute;
+  inset-block-end: -1px;
+  inset-inline-end: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--success);
+  box-shadow: 0 0 0 2px var(--rk-presence-ring, var(--sidebar));
+}
+
+.rk-presence-dot[data-presence="working"] {
+  background: var(--status-working);
+  animation: rkPresencePulse 1.6s ease-in-out infinite;
+}
+
+.rk-presence-dot[data-presence="error"] {
+  background: var(--destructive);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rakazo-bot-avatar-ring,
   .rakazo-bot-avatar-eyes,
@@ -565,6 +673,13 @@
   }
 
   .rakazo-organic-avatar[data-eye-pattern] .rakazo-organic-avatar-eyes {
+    animation: none;
+    transition: none;
+  }
+
+  .rk-typing-dot,
+  .rk-presence-dot,
+  .rk-presence-dot[data-presence="working"] {
     animation: none;
     transition: none;
   }

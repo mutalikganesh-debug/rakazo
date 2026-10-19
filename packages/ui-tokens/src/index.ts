@@ -38,6 +38,12 @@ export type ColorTokens = {
   sidebarBorder: string;
   sidebarAccent: string;
   sidebarAccentForeground: string;
+  /** Solid fill behind the selected/active item in any nav or menu. */
+  navSelectedBg: string;
+  /** Foreground (text/icons) on `navSelectedBg`. */
+  navSelectedFg: string;
+  /** Left indicator bar on a selected nav row. */
+  navSelectedIndicator: string;
   link: string;
   /** Backing behind a link's site icon. White in both themes so dark logos stay visible. */
   faviconPlate: string;
@@ -76,6 +82,9 @@ export const darkTokens = {
   sidebarBorder: "#1C1D22",
   sidebarAccent: "#1A1B20",
   sidebarAccentForeground: "#ECECEE",
+  navSelectedBg: "#3563B8",
+  navSelectedFg: "#F5F6F8",
+  navSelectedIndicator: "#FFFFFF",
   link: "#3B82F6",
   faviconPlate: "#FFFFFF",
   success: "#4ECB71",
@@ -113,6 +122,9 @@ export const lightTokens = {
   sidebarBorder: "#E8E8E4",
   sidebarAccent: "#FFFFFF",
   sidebarAccentForeground: "#1A1A1A",
+  navSelectedBg: "#2563EB",
+  navSelectedFg: "#FFFFFF",
+  navSelectedIndicator: "#FFFFFF",
   link: "#2563EB",
   faviconPlate: "#FFFFFF",
   success: "#228B3B",

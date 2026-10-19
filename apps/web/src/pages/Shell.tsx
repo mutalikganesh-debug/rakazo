@@ -35,6 +35,7 @@ import {
 } from "@rakazo/contracts";
 import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
+  ACTIVE_RUN_STATUSES,
   attachmentsForThread,
   buildComposerMentionOptions,
   clampMentionHighlightIndex,
@@ -3320,11 +3321,11 @@ export function ShellPage() {
                                 compact
                                   ? "min-h-11 gap-2 rounded-xl px-2.5 py-1.5"
                                   : "gap-3 rounded-xl px-2.5 py-[10px]"
-                              } text-start ${
+                              } text-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
                                 item.kind === "bot" ? "cursor-grab active:cursor-grabbing" : ""
                               } ${
                                 selected || rosterDropKey === rowDropKey
-                                  ? "bg-sidebar-accent"
+                                  ? "rk-nav-selected transition-colors"
                                   : "group-hover/row:bg-sidebar-accent"
                               }`}
                               style={
@@ -3334,12 +3335,25 @@ export function ShellPage() {
                               }
                             >
                               {item.kind === "bot" ? (
-                                <BotAvatar
-                                  color={item.chat.color}
-                                  identity={item.chat.id}
-                                  size={compact ? 28 : 38}
-                                  status={item.chat.status}
-                                />
+                                <span className="relative inline-flex shrink-0">
+                                  <BotAvatar
+                                    color={item.chat.color}
+                                    identity={item.chat.id}
+                                    size={compact ? 28 : 38}
+                                    status={item.chat.status}
+                                  />
+                                  <span
+                                    aria-hidden="true"
+                                    className="rk-presence-dot"
+                                    data-presence={
+                                      rowError
+                                        ? "error"
+                                        : ACTIVE_RUN_STATUSES.some((s) => s === item.chat.status)
+                                          ? "working"
+                                          : "idle"
+                                    }
+                                  />
+                                </span>
                               ) : (
                                 <GroupAvatar
                                   members={
@@ -3762,7 +3776,9 @@ export function ShellPage() {
                   }
                 }}
                 data-active={panel === "computer" ? "" : undefined}
-                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                  panel === "computer" ? "rk-nav-selected rk-nav-flat" : "hover:bg-accent"
+                }`}
               >
                 <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
               </button>

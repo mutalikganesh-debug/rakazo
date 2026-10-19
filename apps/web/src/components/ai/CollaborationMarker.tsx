@@ -35,8 +35,13 @@ export function CollaborationMarker({
 
 export function ActiveBotGlyph({ bots, label }: { bots: GroupAvatarMember[]; label: string }) {
   return (
-    <div className="flex min-h-10 items-center px-1">
+    <div className="flex min-h-10 items-center gap-3 px-1">
       <LoadingState indicator={<GroupAvatar members={bots} size={28} />} label={label} />
+      <span className="rk-typing-dots" data-testid="typing-dots" aria-hidden="true">
+        <span className="rk-typing-dot" />
+        <span className="rk-typing-dot" />
+        <span className="rk-typing-dot" />
+      </span>
     </div>
   );
 }

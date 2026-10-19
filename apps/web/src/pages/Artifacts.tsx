@@ -717,7 +717,7 @@ function ViewModeButton({
       title={label}
       onClick={onClick}
       className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
-        active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
+        active ? "rk-nav-selected rk-nav-flat" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}

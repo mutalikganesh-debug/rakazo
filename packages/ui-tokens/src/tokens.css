@@ -29,6 +29,9 @@
   --sidebar-border: #1c1d22;
   --sidebar-accent: #1a1b20;
   --sidebar-accent-foreground: #ececee;
+  --nav-selected-bg: #3563b8;
+  --nav-selected-fg: #f5f6f8;
+  --nav-selected-indicator: #ffffff;
   --link: #3b82f6;
   --favicon-plate: #ffffff;
   --success: #4ecb71;
@@ -68,6 +71,9 @@
   --sidebar-border: #e8e8e4;
   --sidebar-accent: #ffffff;
   --sidebar-accent-foreground: #1a1a1a;
+  --nav-selected-bg: #2563eb;
+  --nav-selected-fg: #ffffff;
+  --nav-selected-indicator: #ffffff;
   --link: #2563eb;
   --favicon-plate: #ffffff;
   --success: #228b3b;

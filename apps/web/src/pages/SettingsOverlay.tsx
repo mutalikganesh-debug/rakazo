@@ -162,16 +162,16 @@ export function SettingsOverlay({
       label: t`Billing & updates`,
       items: [
         { id: "usage", label: t`Usage`, icon: Gauge },
-        ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
+        ...(billingEnabled
+          ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }]
+          : []),
         { id: "updates", label: t`Updates`, icon: CloudDownload },
       ],
     },
   ];
 
   const sectionTitle =
-    navGroups
-      .flatMap((group) => group.items)
-      .find((item) => item.id === section)?.label ??
+    navGroups.flatMap((group) => group.items).find((item) => item.id === section)?.label ??
     (section === "general" ? t`General` : t`Settings`);
 
   const closeLabel =
@@ -248,7 +248,7 @@ export function SettingsOverlay({
                       onClick={() => setSection(item.id)}
                       className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                         active
-                          ? "bg-muted text-foreground"
+                          ? "rk-nav-selected"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
                       }`}
                     >
