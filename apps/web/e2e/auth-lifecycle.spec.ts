@@ -195,6 +195,7 @@ test("logout protects bot deep links and sign-in restores the session", async ({
 });
 
 test("changes and recovers an email password", async ({ page }, testInfo) => {
+  test.skip(!process.env.API_URL, "needs the testkit harness in-process API: EmailEmulator + /__e2e/emails capture (EMAIL_EMULATOR is production-gated)");
   const stamp = Date.now();
   const email = `password-recovery-${stamp}@rakazo.test`;
   const originalPassword = "password12";

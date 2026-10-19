@@ -52,6 +52,7 @@ test("setup exposes all integration choices and saves only the selected provider
 test("direct MCP connects a catalog result without asking for a URL and assigns it to the first bot", async ({
   page,
 }, testInfo) => {
+  test.skip(!process.env.API_URL, "needs the testkit harness in-process API: integrations catalog feed for catalog-result installs");
   await page.route("**/rpc/integrationSetup/get", (route) =>
     route.fulfill({
       json: {

@@ -113,6 +113,7 @@ test("custom connections persist reasoning support and bot thinking", async ({
 });
 
 test("connects, lists, and uses an OpenAI-compatible endpoint", async ({ page }, testInfo) => {
+  test.skip(!process.env.API_URL, "needs the testkit harness in-process API: in-process api can reach the test's host-local mock model server");
   const server = createServer((request, response) => {
     if (request.method === "GET" && request.url === "/v1/models") {
       response.writeHead(200, { "content-type": "application/json" });

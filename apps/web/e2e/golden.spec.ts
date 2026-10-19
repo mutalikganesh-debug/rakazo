@@ -50,6 +50,7 @@ test("two users are isolated and a bot completes durable work", async ({ browser
 });
 
 test("takeover, routine, plugins, and export are reachable", async ({ page }, testInfo) => {
+  test.skip(!process.env.API_URL, "needs the testkit harness in-process API: integrations catalog (catalog.example.test) for the plugins section");
   const stamp = Date.now();
   await signup(page, `flow-${stamp}@rakazo.test`, "password12", "Flow");
   await completeOnboarding(page);

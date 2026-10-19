@@ -4,6 +4,7 @@ import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 test("advanced GraphQL install shows Add GraphQL in MCP, OpenAPI, GraphQL, Executor, Treg order", async ({
   page,
 }, testInfo) => {
+  test.skip(!process.env.API_URL, "needs the testkit harness in-process API: emulated third-party connector network for *.example.test endpoints");
   const stamp = Date.now();
   await signup(page, `graphql-source-${stamp}@rakazo.test`, "password12", `GraphQL ${stamp}`);
   await completeOnboarding(page);

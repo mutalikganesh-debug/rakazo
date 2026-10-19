@@ -11,7 +11,7 @@ test("a failed overlay chunk keeps the shell and the draft, and Refresh loads it
   const composer = page.getByRole("combobox", { name: "Message Chief" });
   await composer.fill("Keep this draft");
 
-  const pluginsChunk = /\/pages\/PluginsOverlay\.tsx/;
+  const pluginsChunk = /PluginsOverlay/;
   await page.route(pluginsChunk, (route) => route.fulfill({ status: 404 }));
   await page.getByText("Integrations", { exact: true }).click();
 
@@ -35,7 +35,7 @@ test("a failed page chunk shows Refresh instead of a blank app", async ({ page }
   await signup(page, `page-load-${stamp}@rakazo.test`, "password12", "Page Load");
   await completeOnboarding(page);
 
-  const artifactsChunk = /\/pages\/Artifacts\.tsx/;
+  const artifactsChunk = /Artifacts/;
   await page.route(artifactsChunk, (route) => route.fulfill({ status: 404 }));
   await page.goto("/app/artifacts");
 
@@ -60,7 +60,7 @@ for (const [failing, intact] of [
     const composer = page.getByRole("combobox", { name: "Message Chief" });
     await composer.fill("Keep this draft");
 
-    await page.route(new RegExp(`/pages/${failing}\\.tsx`), (route) =>
+    await page.route(new RegExp(failing), (route) =>
       route.fulfill({ status: 404 }),
     );
     await page

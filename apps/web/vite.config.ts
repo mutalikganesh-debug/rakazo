@@ -15,6 +15,7 @@ import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import type { PreviewServer, ViteDevServer } from "vite";
+import { readdirSync } from "node:fs";
 import { defineConfig, loadEnv } from "vite";
 import { resolveScreenProxySecret } from "../../packages/core/src/secrets-guard.ts";
 import { createServiceLogger } from "../../packages/logging/src/env.ts";
@@ -421,6 +422,23 @@ export default defineConfig(({ mode }) => {
     process.env.RAKAZO_DESKTOP_STACK_TOKEN ?? rootEnv.RAKAZO_DESKTOP_STACK_TOKEN ?? "";
   const imageTag = process.env.RAKAZO_IMAGE_TAG ?? rootEnv.RAKAZO_IMAGE_TAG ?? "edge";
   return {
+    // Build the e2e fixture pages (they live outside public/, so the production
+    // bundle would not serve /e2e/fixtures/* without explicit entries).
+    build: {
+      rollupOptions: {
+        input: {
+          index: path.resolve(import.meta.dirname, "index.html"),
+          ...Object.fromEntries(
+            readdirSync(path.resolve(import.meta.dirname, "e2e/fixtures"))
+              .filter((name) => name.endsWith(".html"))
+              .map((name) => [
+                `e2e/fixtures/${name}`,
+                path.resolve(import.meta.dirname, "e2e/fixtures", name),
+              ]),
+          ),
+        },
+      },
+    },
     plugins: [
       react(),
       babel({ plugins: ["@lingui/babel-plugin-lingui-macro"] }),

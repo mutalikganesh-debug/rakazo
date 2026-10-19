@@ -8,6 +8,7 @@ function slackCard(page: Page) {
 test("focus choice suggests apps and preserves a completed connection", async ({
   page,
 }, testInfo) => {
+  test.skip(!process.env.API_URL, "needs the testkit harness in-process API: Composio emulator app catalog for focus-choice suggestions");
   const stamp = Date.now();
   await signup(page, `onboarding-${stamp}@rakazo.test`, "password12", "Robin");
   await completeOnboarding(page);
