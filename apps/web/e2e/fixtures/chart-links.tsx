@@ -1,4 +1,5 @@
 import { setupI18n } from "@lingui/core";
+import { messages as enMessages } from "../../src/locales/en/messages.po";
 import { I18nProvider } from "@lingui/react";
 import { createRoot } from "react-dom/client";
 import { ChartBlockView } from "../../src/pages/shell/message-cards";
@@ -6,7 +7,7 @@ import "../../src/styles.css";
 
 const params = new URLSearchParams(location.search);
 const href = params.get("href") ?? "#details";
-const i18n = setupI18n({ locale: "en", messages: { en: {} } });
+const i18n = setupI18n({ locale: "en", messages: { en: enMessages } });
 
 createRoot(document.getElementById("root")!).render(
   <I18nProvider i18n={i18n}>

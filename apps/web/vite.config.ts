@@ -425,6 +425,11 @@ export default defineConfig(({ mode }) => {
     // Build the e2e fixture pages (they live outside public/, so the production
     // bundle would not serve /e2e/fixtures/* without explicit entries).
     build: {
+      // Lightningcss minification (Vite 8 default) lowers :dir(rtl) to
+      // :lang(...) lists, which key off lang attributes and break
+      // direction-keyed chrome (the RTL table sort flip). esbuild minifies
+      // without rewriting selectors.
+      cssMinify: "esbuild",
       rollupOptions: {
         input: {
           index: path.resolve(import.meta.dirname, "index.html"),

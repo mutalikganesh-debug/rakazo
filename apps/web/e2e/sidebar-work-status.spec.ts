@@ -45,10 +45,10 @@ test("sidebar roster shows Working… while a run is active", async ({ page }, t
     const statusLabel = row.getByText("Working…", { exact: true });
     await expect(statusLabel).toBeVisible();
     await expect(row).not.toContainText("keep working until I stop you");
-    const workingColor = await page.evaluate(() => {
+    const workingColor = await statusLabel.evaluate((element) => {
       const probe = document.createElement("span");
       probe.style.color = "var(--status-working)";
-      document.body.append(probe);
+      element.append(probe);
       const color = getComputedStyle(probe).color;
       probe.remove();
       return color;

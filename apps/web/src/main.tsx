@@ -6,13 +6,11 @@ import { DesktopUpdatesProvider } from "./components/DesktopUpdates";
 import { I18nBootstrap } from "./components/I18nBootstrap";
 import { applyUiDirection } from "./lib/apply-ui-direction";
 import { markAfterPaint, markOnce } from "./lib/performance";
-import { installPreloadRecovery } from "./lib/preload-recovery";
 import { applyUiAppearance, watchSystemAppearance } from "./lib/ui-appearance";
 import { resolveUiLocale } from "./lib/ui-locale";
 import "./styles.css";
 
 markOnce("rk:renderer:module-evaluated");
-installPreloadRecovery();
 applyUiDirection(resolveUiLocale());
 applyUiAppearance();
 
