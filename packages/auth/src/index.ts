@@ -234,8 +234,17 @@ const CREDENTIAL_PATHS = ["/sign-in/email", "/sign-up/email", "/request-password
 /** Shared across API processes. Off outside production so tests can sign in freely. */
 export function authRateLimitOptions(nodeEnv = process.env.NODE_ENV) {
   const rule = { window: 15 * 60, max: 10 };
+  // AUTH_RATE_LIMIT=off|on overrides the NODE_ENV default so an e2e stack can run in
+  // production mode without the signup limiter. Unset = unchanged behavior.
+  const toggle = process.env.AUTH_RATE_LIMIT?.trim().toLowerCase();
+  const enabled =
+    toggle === "off" || toggle === "0" || toggle === "false"
+      ? false
+      : toggle === "on" || toggle === "1" || toggle === "true"
+        ? true
+        : nodeEnv === "production";
   return {
-    enabled: nodeEnv === "production",
+    enabled,
     storage: "database" as const,
     customRules: {
       ...Object.fromEntries(CREDENTIAL_PATHS.map((path) => [path, rule])),

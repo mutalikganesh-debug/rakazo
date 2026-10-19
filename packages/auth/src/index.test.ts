@@ -80,6 +80,19 @@ describe("authRateLimitOptions", () => {
   it("stays off outside production so the test suite can sign in", () => {
     expect(authRateLimitOptions("test").enabled).toBe(false);
   });
+
+  it("lets AUTH_RATE_LIMIT override the NODE_ENV default", () => {
+    const prev = process.env.AUTH_RATE_LIMIT;
+    try {
+      process.env.AUTH_RATE_LIMIT = "off";
+      expect(authRateLimitOptions("production").enabled).toBe(false);
+      process.env.AUTH_RATE_LIMIT = "on";
+      expect(authRateLimitOptions("test").enabled).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.AUTH_RATE_LIMIT;
+      else process.env.AUTH_RATE_LIMIT = prev;
+    }
+  });
 });
 
 describe("buildTrustedOrigins", () => {
