@@ -3,6 +3,7 @@ import {
   combineTranscript,
   Dictation,
   MAX_TRANSCRIPTION_RESPONSE_BYTES,
+  mergeRecognitionResults,
   speechLocaleTag,
   TRANSCRIPTION_RESPONSE_TIMEOUT_MS,
   transcriptionLanguage,
@@ -1657,5 +1658,47 @@ describe("transcriptionLanguage", () => {
   it("hints the provider with the language the caller picked", () => {
     vi.stubGlobal("navigator", { language: "es-ES" });
     expect(transcriptionLanguage()).toBe("es");
+  });
+});
+
+describe("mergeRecognitionResults", () => {
+  it("collapses phrase-so-far runs from cumulative engines", () => {
+    // The engine appends each phrase-so-far as its own entry — the raw
+    // "I was I was checking I was checking" snowball.
+    expect(
+      mergeRecognitionResults([
+        { isFinal: true, transcript: "I was" },
+        { isFinal: false, transcript: "I was checking" },
+        { isFinal: false, transcript: "I was checking whether" },
+        { isFinal: true, transcript: "I was checking whether" },
+      ]),
+    ).toBe("I was checking whether");
+  });
+
+  it("preserves real repeats in separate final phrases", () => {
+    expect(
+      mergeRecognitionResults([
+        { isFinal: true, transcript: "please say no" },
+        { isFinal: true, transcript: "no" },
+      ]),
+    ).toBe("please say no no");
+  });
+
+  it("keeps double finals of the identical phrase", () => {
+    expect(
+      mergeRecognitionResults([
+        { isFinal: true, transcript: "very good" },
+        { isFinal: true, transcript: "very good" },
+      ]),
+    ).toBe("very good very good");
+  });
+
+  it("joins unrelated phrases", () => {
+    expect(
+      mergeRecognitionResults([
+        { isFinal: true, transcript: "hello" },
+        { isFinal: false, transcript: "how are you" },
+      ]),
+    ).toBe("hello how are you");
   });
 });

@@ -158,6 +158,38 @@ export function combineTranscript(prefix: string, speechText: string): string {
   return `${head} ${normalizedTail}`;
 }
 
+type RecognitionChunk = { isFinal: boolean; transcript: string };
+
+/**
+ * Fold one onresult batch into the session transcript. Cumulative engines append each
+ * phrase-so-far as its own entry ("I was" / "I was checking" / "I was checking whether"),
+ * so a strictly growing run collapses to its newest entry. Everything else — separate
+ * phrases and real repeats ("please say no" + "no") — joins untouched.
+ * ponytail: a strictly growing run collapses even across finals, so two real sentences
+ * where the second extends the first ("I was." / "I was checking.") lose the first;
+ * acceptable until an engine needs distinguishing.
+ */
+export function mergeRecognitionResults(chunks: RecognitionChunk[]): string {
+  const parts: string[] = [];
+  const finals: boolean[] = [];
+  for (const chunk of chunks) {
+    const text = chunk.transcript.trim();
+    if (!text) continue;
+    const prev = parts[parts.length - 1];
+    const prevFinal = finals[parts.length - 1] ?? true;
+    const grown = prev !== undefined && text.startsWith(prev) && text.length > prev.length;
+    const same = prev !== undefined && text === prev;
+    if (grown || (same && (!prevFinal || !chunk.isFinal))) {
+      parts[parts.length - 1] = text;
+      finals[finals.length - 1] = chunk.isFinal;
+      continue;
+    }
+    parts.push(text);
+    finals.push(chunk.isFinal);
+  }
+  return parts.join(" ");
+}
+
 function speechRecognitionCtor(): SpeechRecognitionCtor | undefined {
   if (typeof window === "undefined") return undefined;
   const host = window as Window & {
@@ -301,10 +333,16 @@ export class Dictation {
     let sessionHeardSpeech = false;
     rec.onresult = (event) => {
       if (!live || this.token !== mine) return;
-      // Each result index is a separate phrase. Matching text within this session
-      // may be a real repetition; only deduplicate against a previous session.
+      // Cumulative engines report each phrase-so-far as its own entry; merging with
+      // the growing-run collapse keeps one copy. A blind join of all results reads
+      // "I was I was checking I was checking".
       const session = normalizedTranscript(
-        Array.from(event.results, (result) => result?.[0]?.transcript ?? "").join(" "),
+        mergeRecognitionResults(
+          Array.from(event.results, (result) => ({
+            isFinal: Boolean(result?.isFinal),
+            transcript: result?.[0]?.transcript ?? "",
+          })),
+        ),
       );
       if (session.trim()) {
         sessionHeardSpeech = true;
