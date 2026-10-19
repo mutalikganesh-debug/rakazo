@@ -52,6 +52,77 @@ export function catalogEntry(provider: string) {
   return voiceCatalogEntry(provider);
 }
 
+const GEMINI_STT_MODEL = "gemini-2.5-flash";
+const GEMINI_STT_TIMEOUT_MS = 30_000;
+const GEMINI_TRANSCRIBE_INSTRUCTION =
+  "Transcribe the user's speech verbatim, return only the transcript.";
+
+/** Server-side transcription key (Google AI Studio). Empty = no Gemini STT. */
+export function geminiApiKey(): string {
+  return (process.env.GEMINI_API_KEY ?? "").trim();
+}
+
+/** Extract the transcript from a Gemini generateContent response body. */
+export function parseGeminiTranscript(body: unknown): string {
+  const parts = (
+    body as { candidates?: { content?: { parts?: { text?: unknown }[] } }[] } | null | undefined
+  )?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+  return parts
+    .map((part) => (typeof part?.text === "string" ? part.text : ""))
+    .join("")
+    .trim();
+}
+
+/** Speech-to-text via Gemini generateContent with inline base64 audio. */
+export async function geminiTranscribe(input: {
+  audio: Uint8Array;
+  mimeType: string;
+  signal?: AbortSignal;
+}): Promise<{ text: string }> {
+  const apiKey = geminiApiKey();
+  if (!apiKey) {
+    throw new ORPCError("BAD_REQUEST", { message: "No transcription key configured." });
+  }
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_STT_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                inline_data: {
+                  mime_type: input.mimeType || "audio/webm",
+                  data: Buffer.from(input.audio).toString("base64"),
+                },
+              },
+              { text: GEMINI_TRANSCRIBE_INSTRUCTION },
+            ],
+          },
+        ],
+      }),
+      signal: AbortSignal.any(
+        [input.signal, AbortSignal.timeout(GEMINI_STT_TIMEOUT_MS)].filter(Boolean) as AbortSignal[],
+      ),
+    },
+  );
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = (await res.text()).slice(0, 200);
+    } catch {
+      // Error body is optional context, never required.
+    }
+    throw new Error(`Transcription failed (${res.status})${detail ? `: ${detail}` : ""}`);
+  }
+  const text = parseGeminiTranscript(await res.json());
+  if (!text) throw new Error("Transcription returned no text.");
+  return { text };
+}
+
 export function toVoiceStatus(
   cred: {
     provider: string;
@@ -60,14 +131,16 @@ export function toVoiceStatus(
   } | null,
 ): VoiceStatus {
   const entry = cred ? catalogEntry(cred.provider) : undefined;
+  const gemini = Boolean(geminiApiKey());
   return {
     configured: Boolean(cred),
     ready: Boolean(cred?.voiceId),
-    // ponytail: a custom baseUrl has no guaranteed transcriptions endpoint (xkiro 404s),
-    // so fail closed and let clients use on-device dictation. Upgrade path: probe the
-    // endpoint at connect and cache the result if a whisper-compatible backend appears.
-    transcribe: Boolean(entry?.transcribe && cred) && !cred?.baseUrl,
-    provider: cred?.provider ?? null,
+    // Gemini is the server-side transcription backend: its key alone claims
+    // transcribe and reports the provider, regardless of the TTS credential's
+    // custom baseUrl. Without it a custom baseUrl fails closed (xkiro 404s
+    // /audio/transcriptions) and clients use on-device dictation.
+    transcribe: gemini || (Boolean(entry?.transcribe && cred) && !cred?.baseUrl),
+    provider: gemini ? "gemini" : (cred?.provider ?? null),
     voiceId: cred?.voiceId ?? "",
   };
 }
@@ -88,8 +161,11 @@ export function toVoiceCredential(row: {
     voiceId: row.voiceId,
     speechModel: row.speechModel ?? "",
     baseUrl: row.baseUrl ?? "",
-    // Same fail-closed rule as toVoiceStatus: custom baseUrl never claims transcribe.
-    transcribe: Boolean(catalogEntry(row.provider)?.transcribe) && !row.baseUrl,
+    // Same rule as toVoiceStatus: Gemini claims transcribe on its own; otherwise a
+    // custom baseUrl fails closed. `provider` stays the credential's identity —
+    // settings match and disconnect key on it, so it never reports "gemini".
+    transcribe:
+      Boolean(geminiApiKey()) || (Boolean(catalogEntry(row.provider)?.transcribe) && !row.baseUrl),
   };
 }
 
@@ -427,6 +503,14 @@ export async function transcribeVoice(
   actor: Actor,
   input: { audio: Uint8Array; mimeType: string; language?: string; signal?: AbortSignal },
 ) {
+  if (input.audio.byteLength === 0 || input.audio.byteLength > MAX_TRANSCRIBE_BYTES) {
+    throw new ORPCError("BAD_REQUEST", { message: "That recording is empty or too large." });
+  }
+  // Gemini is the server-side transcription backend when its key is configured:
+  // it needs no TTS credential and no provider transcription support.
+  if (geminiApiKey()) {
+    return geminiTranscribe(input);
+  }
   const loaded = await loadDefaultVoiceCredential(deps, actor);
   if (!loaded) throw new NoVoiceConfigured("key");
   const provider = createVoiceProvider(loaded.cred.provider);
@@ -434,9 +518,6 @@ export async function transcribeVoice(
     throw new ORPCError("BAD_REQUEST", {
       message: "This voice provider does not transcribe audio. Use on-device dictation instead.",
     });
-  }
-  if (input.audio.byteLength === 0 || input.audio.byteLength > MAX_TRANSCRIBE_BYTES) {
-    throw new ORPCError("BAD_REQUEST", { message: "That recording is empty or too large." });
   }
   return provider.transcribe(
     {

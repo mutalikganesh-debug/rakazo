@@ -9,7 +9,9 @@ import {
   MAX_SPEAK_REQUEST_BYTES,
   MAX_TRANSCRIBE_REQUEST_BYTES,
   mountVoiceHttpRoutes,
+  parseGeminiTranscript,
   synthesizeVoice,
+  toVoiceCredential,
   toVoiceStatus,
   updateVoiceSpeechModel,
   type VoiceDeps,
@@ -492,5 +494,132 @@ describe("synthesizeVoice", () => {
     await synthesizeVoice(deps, actor, { text: "Hello" });
 
     expect(synthesize.mock.calls[0]?.[0]).toMatchObject({ model: undefined });
+  });
+});
+
+describe("gemini transcription", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const customBaseUrl = "https://api.xkiro.com/v1";
+
+  it("claims transcribe with provider gemini when the key is configured", () => {
+    vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
+    expect(toVoiceStatus({ provider: "openai", voiceId: "v", baseUrl: customBaseUrl })).toEqual({
+      configured: true,
+      ready: true,
+      transcribe: true,
+      provider: "gemini",
+      voiceId: "v",
+    });
+  });
+
+  it("stays fail closed when no gemini key is configured", () => {
+    vi.stubEnv("GEMINI_API_KEY", "");
+    expect(
+      toVoiceStatus({ provider: "openai", voiceId: "v", baseUrl: customBaseUrl }).transcribe,
+    ).toBe(false);
+    expect(
+      toVoiceCredential({
+        id: "cred-1",
+        provider: "openai",
+        isDefault: true,
+        voiceId: "v",
+        baseUrl: customBaseUrl,
+      }).transcribe,
+    ).toBe(false);
+  });
+
+  it("toVoiceCredential claims transcribe with the key regardless of baseUrl", () => {
+    vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
+    expect(
+      toVoiceCredential({
+        id: "cred-1",
+        provider: "openai",
+        isDefault: true,
+        voiceId: "v",
+        baseUrl: customBaseUrl,
+      }),
+    ).toMatchObject({ transcribe: true, provider: "openai" });
+  });
+
+  it("extracts the transcript from the generateContent response", () => {
+    expect(
+      parseGeminiTranscript({
+        candidates: [{ content: { parts: [{ text: " testing one two three " }] } }],
+      }),
+    ).toBe("testing one two three");
+  });
+
+  it("routes /api/voice/transcribe through gemini and returns the transcript", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "testing one two three" }] } }],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const app = new Hono();
+    mountVoiceHttpRoutes(
+      app,
+      {} as VoiceDeps,
+      async () => ({ userId: "user", spaceId: "space" }) as Actor,
+    );
+
+    const response = await app.request("/api/voice/transcribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        audioBase64: Buffer.from("fake-audio").toString("base64"),
+        mimeType: "audio/webm",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ text: "testing one two three" });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("gemini-2.5-flash:generateContent");
+    expect(url).toContain("test-gemini-key");
+    const payload = JSON.parse(String(init.body)) as {
+      contents: { parts: { inline_data?: { mime_type: string; data: string } }[] }[];
+    };
+    expect(payload.contents[0]?.parts[0]?.inline_data).toMatchObject({ mime_type: "audio/webm" });
+    expect(payload.contents[0]?.parts[1]).toEqual({
+      text: "Transcribe the user's speech verbatim, return only the transcript.",
+    });
+  });
+
+  it("returns a 502 structured error when the upstream transcription fails", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("upstream boom", { status: 500 })),
+    );
+    const app = new Hono();
+    mountVoiceHttpRoutes(
+      app,
+      {} as VoiceDeps,
+      async () => ({ userId: "user", spaceId: "space" }) as Actor,
+    );
+
+    const response = await app.request("/api/voice/transcribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        audioBase64: Buffer.from("fake-audio").toString("base64"),
+        mimeType: "audio/webm",
+      }),
+    });
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: expect.stringContaining("Transcription failed"),
+    });
   });
 });
