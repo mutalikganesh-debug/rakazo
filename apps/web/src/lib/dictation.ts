@@ -582,6 +582,13 @@ export class Dictation {
       const body = await readTranscriptionBody(res, abort.signal);
       if (this.token !== mine) return;
       if (!res.ok) {
+        // Server transcription is best-effort: whatever live recognition already
+        // heard is still the caller's words, so hand that over instead of dropping it.
+        const heard = normalizedTranscript(this.snapshot.transcript);
+        if (heard) {
+          this.finish(heard, mine);
+          return;
+        }
         this.failListening(mine, body.error ?? "Could not transcribe that recording.");
         return;
       }

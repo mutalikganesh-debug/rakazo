@@ -31,6 +31,19 @@ describe("toVoiceStatus", () => {
     expect(toVoiceStatus({ provider: "cartesia", voiceId: "katie" }).transcribe).toBe(false);
   });
 
+  it("never claims transcribe for a custom baseUrl", () => {
+    // The adapter can transcribe, but a custom backend may not (xkiro 404s
+    // /v1/audio/transcriptions), so the flag fails closed to on-device dictation.
+    expect(
+      toVoiceStatus({
+        provider: "openai",
+        voiceId: "confident-male",
+        baseUrl: "https://api.xkiro.com/v1",
+      }).transcribe,
+    ).toBe(false);
+    expect(toVoiceStatus({ provider: "openai", voiceId: "confident-male" }).transcribe).toBe(true);
+  });
+
   it("is off when nothing is connected", () => {
     expect(toVoiceStatus(null)).toEqual({
       configured: false,

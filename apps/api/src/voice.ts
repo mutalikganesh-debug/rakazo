@@ -52,12 +52,21 @@ export function catalogEntry(provider: string) {
   return voiceCatalogEntry(provider);
 }
 
-export function toVoiceStatus(cred: { provider: string; voiceId: string } | null): VoiceStatus {
+export function toVoiceStatus(
+  cred: {
+    provider: string;
+    voiceId: string;
+    baseUrl?: string | null;
+  } | null,
+): VoiceStatus {
   const entry = cred ? catalogEntry(cred.provider) : undefined;
   return {
     configured: Boolean(cred),
     ready: Boolean(cred?.voiceId),
-    transcribe: Boolean(entry?.transcribe && cred),
+    // ponytail: a custom baseUrl has no guaranteed transcriptions endpoint (xkiro 404s),
+    // so fail closed and let clients use on-device dictation. Upgrade path: probe the
+    // endpoint at connect and cache the result if a whisper-compatible backend appears.
+    transcribe: Boolean(entry?.transcribe && cred) && !cred?.baseUrl,
     provider: cred?.provider ?? null,
     voiceId: cred?.voiceId ?? "",
   };
@@ -79,7 +88,8 @@ export function toVoiceCredential(row: {
     voiceId: row.voiceId,
     speechModel: row.speechModel ?? "",
     baseUrl: row.baseUrl ?? "",
-    transcribe: Boolean(catalogEntry(row.provider)?.transcribe),
+    // Same fail-closed rule as toVoiceStatus: custom baseUrl never claims transcribe.
+    transcribe: Boolean(catalogEntry(row.provider)?.transcribe) && !row.baseUrl,
   };
 }
 
