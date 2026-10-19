@@ -30,7 +30,24 @@ export async function completeOnboarding(page: Page, testInfo?: TestInfo) {
   // first bot is created automatically — land in Chief's chat with no form.
   const integrations = page.getByRole("heading", { name: "Server integrations", exact: true });
   const chief = page.getByText("Chief").first();
-  await integrations.or(chief).or(page.getByText("Opening chat…")).waitFor({ timeout: 20_000 });
+  const modelStep = page.getByRole("heading", { name: "Connect a model", exact: true });
+  await integrations
+    .or(chief)
+    .or(modelStep)
+    .or(page.getByText("Opening chat…"))
+    .waitFor({ timeout: 20_000 });
+  // A deployment without a model credential parks the wizard on "Connect a
+  // model" with no skip. Nothing in the board flow sends a run, so provision
+  // the first bot over RPC and continue instead of wiring a provider key.
+  if (await modelStep.isVisible().catch(() => false)) {
+    if (testInfo) await captureScreenshot(page, testInfo, "02-connect-apps");
+    await createNamedBot(page, "Chief");
+    if (testInfo) {
+      await captureScreenshot(page, testInfo, "03-create-first-bot");
+      await captureScreenshot(page, testInfo, "06-onboarding-complete");
+    }
+    return;
+  }
   if ((await chief.isVisible().catch(() => false)) && page.url().includes("/app")) {
     if (testInfo) {
       await captureScreenshot(page, testInfo, "03-create-first-bot");
