@@ -350,7 +350,18 @@ describe("MCP transport seam", () => {
       access_token: "fresh-access",
       refresh_token: "rotated-refresh",
     });
-    expect(persisted).toHaveLength(1);
+    // @modelcontextprotocol/sdk >=1.32 (GHSA-6qxp-vccf-f47h fix) first stamps legacy
+    // client information with its authorization-server issuer, then persists the rotation.
+    expect(persisted).toHaveLength(2);
+    expect(persisted[0]).toMatchObject({
+      oauth: { clientInformation: { client_id: "client-1", issuer: "https://auth.example.test" } },
+    });
+    expect(persisted.at(-1)).toMatchObject({
+      oauth: {
+        clientInformation: { client_id: "client-1", issuer: "https://auth.example.test" },
+        tokens: { access_token: "fresh-access", refresh_token: "rotated-refresh" },
+      },
+    });
     await session.close();
   });
 
